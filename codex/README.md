@@ -30,7 +30,10 @@ Source publication and a manual hook replay do not establish host activation.
 
 `UserPromptSubmit` runs before the model. Its worker gets a hard 3.5-second deadline.
 Acknowledgements, explicit selections, sensitive requests and user opt-outs skip network
-selection. For an ambiguous turn, the adapter reuses upstream two-stage skill selection;
+selection. Whole commands naming an exact design mode and a narrow grammar for ordinary
+component polish also route locally. Extra prose, conflicting modes and unknown wording
+retain the existing semantic selector; this is not a general ambiguity classifier.
+For an ambiguous turn, the adapter reuses upstream two-stage skill selection;
 an independent design-mode question shares stage one's request. It injects a short
 advisory recommendation, never a tool call or a blocking decision.
 
@@ -51,7 +54,9 @@ the version actually returned. Preview image/Box features are not enabled automa
 
 The last observed hook receipt lives in `<codex-home>/jev/last-hook.json`; it contains
 skill IDs, outcomes, request-attempt counts, model versions, tokens and timing, not prompt
-text. The Windows launcher briefly spools stdin under the user's Codex runtime so the
+text. UTC timestamps, session/turn IDs and the selected design mode allow correlation
+with real host hook notifications. A local recommendation is labelled as local, not a
+Jev model response. The Windows launcher briefly spools stdin under the user's Codex runtime so the
 shared hidden runner can consume it, then removes the file in `finally`.
 
 ## Principles

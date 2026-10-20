@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Route exact design-mode commands and narrowly recognized component polish in code,
+  preserving ambiguous/mixed requests for Jev. Extend the OFF switch to bounded decisions
+  and correlate prompt-free receipts with actual Codex session/turn IDs and design modes.
+
 - Include the shared user `~/.agents/skills` scope in Codex discovery and standalone
   Jev retirement. Keep matching legacy names in separate recoverable archives,
   preserve unrelated skills and roll back both scopes together on failure.
