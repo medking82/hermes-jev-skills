@@ -116,7 +116,7 @@ def local_catalog(home: Path, cwd: Path) -> list:
     for root in roots:
         if not root.is_dir():
             continue
-        for path in sorted(root.rglob("SKILL.md")):
+        for path in _entrypoints(root):
             if path.is_symlink() or str(path.resolve()) in disabled:
                 continue
             metadata = path.parent / "agents" / "openai.yaml"
@@ -127,6 +127,27 @@ def local_catalog(home: Path, cwd: Path) -> list:
             if fields.get("name") and fields.get("description"):
                 rows.append({"name": fields["name"], "description": fields["description"], "path": str(path.resolve())})
     return normalize_catalog(rows)
+
+
+def _entrypoints(root: Path):
+    """A skill's resources are not another skill catalog (and may contain huge trees)."""
+    pending = [(root, 0)]
+    ignored = {".git", ".venv", "node_modules", "__pycache__", ".cache", "dist", "target"}
+    while pending:
+        directory, depth = pending.pop()
+        entrypoint = directory / "SKILL.md"
+        if entrypoint.is_file():
+            yield entrypoint
+            continue
+        if depth >= 4:
+            continue
+        for child in sorted(directory.iterdir(), reverse=True):
+            if child.name in ignored or not child.is_dir() or child.is_symlink():
+                continue
+            # Windows directory junctions are reparse points, not pathlib symlinks.
+            if getattr(child.stat(follow_symlinks=False), "st_file_attributes", 0) & 1024:
+                continue
+            pending.append((child, depth + 1))
 
 
 def _explicit(turn: str, catalog: list) -> list:
@@ -265,13 +286,25 @@ def decision(payload: dict, *, ask_fn=None) -> dict:
         return fallback(error.code)
 
 
+def _write_hook_receipt(home: Path, event: dict, receipt: dict) -> None:
+    receipt = dict(receipt, observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event")
+    state = home / "jev"
+    try:
+        state.mkdir(parents=True, exist_ok=True)
+        (state / "last-hook.json").write_text(json.dumps(receipt), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
     """One recommendation per event. Never block a prompt or load/execute a skill."""
     if event.get("hook_event_name") != "UserPromptSubmit" or not isinstance(event.get("prompt"), str):
         return {}
     home = home or codex_home()
     turn = event["prompt"]
-    if _gate(turn):
+    gated = _gate(turn)
+    if gated:
+        _write_hook_receipt(home, event, gated)
         return {}
     started = time.monotonic()
     try:
@@ -291,15 +324,12 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                 temporary.write_text(json.dumps({"fingerprint": fingerprint, "result": result}), encoding="utf-8")
                 os.replace(str(temporary), str(cache))
         receipt = {"status": result["status"], "source": result.get("source"),
-                   "observation_source": event.get("_jev_invocation", "host_event"),
                    "reason_code": result.get("reason_code"), "catalog_scope": "local_scopes",
                    "skills": [s["name"] for s in result.get("skills", [])],
                    "workflow": result.get("workflow"),
                    "ask_attempts": result.get("ask_attempts", 0), "receipts": result.get("receipts", []),
                    "duration_ms": int((time.monotonic() - started) * 1000)}
-        state = home / "jev"
-        state.mkdir(parents=True, exist_ok=True)
-        (state / "last-hook.json").write_text(json.dumps(receipt), encoding="utf-8")
+        _write_hook_receipt(home, event, receipt)
         if result["status"] != "ok" or not (result.get("skills") or result.get("workflow")):
             return {}
         context = ""
@@ -316,6 +346,7 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                     "Do not rerun skill selection for this turn unless the task changes.")
         return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}
     except (OSError, ValueError, KeyError, TypeError):
+        _write_hook_receipt(home, event, fallback("catalog_unavailable"))
         return {}
 
 
@@ -324,11 +355,20 @@ def _bounded_hook(event: dict, deadline=3.5) -> dict:
     bootstrap = "import sys;sys.path.insert(0,sys.argv.pop(1));from jevkit.codex import main;raise SystemExit(main())"
     args = [sys.executable, "-B", "-c", bootstrap, str(Path(__file__).resolve().parents[1]), "hook-worker"]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    started = time.monotonic()
     try:
         run = subprocess.run(args, input=json.dumps(event), capture_output=True, text=True,
             encoding="utf-8", timeout=deadline, creationflags=flags)
-        return json.loads(run.stdout) if run.returncode == 0 else {}
-    except (subprocess.TimeoutExpired, OSError, ValueError):
+        if run.returncode != 0:
+            _write_hook_receipt(codex_home(), event, fallback("worker_failed"))
+            return {}
+        return json.loads(run.stdout)
+    except subprocess.TimeoutExpired:
+        _write_hook_receipt(codex_home(), event, dict(fallback("hard_timeout"), ask_attempts=None,
+                            duration_ms=int((time.monotonic() - started) * 1000)))
+        return {}
+    except (OSError, ValueError):
+        _write_hook_receipt(codex_home(), event, fallback("worker_failed"))
         return {}
 
 

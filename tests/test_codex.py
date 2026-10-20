@@ -194,9 +194,28 @@ class CodexHookTests(unittest.TestCase):
         names = {s["name"] for s in codex.local_catalog(self.home, project_skill.parent)}
         self.assertNotIn("project-private", names)
 
+    def test_nested_resources_are_not_discovered_as_independent_skills(self):
+        nested = self.skill.parent / "references/example/SKILL.md"
+        nested.parent.mkdir(parents=True)
+        nested.write_text("---\nname: embedded-example\ndescription: Not an installed skill\n---\n")
+        names = {s["name"] for s in codex.local_catalog(self.home, self.home)}
+        self.assertEqual(names, {"design"})
+
+    def test_system_scope_is_discovered_without_traversing_dependency_trees(self):
+        for relative, name in ((".system/system-test", "system-test"), ("node_modules/dependency", "dependency")):
+            entry = self.home / "skills" / relative / "SKILL.md"
+            entry.parent.mkdir(parents=True)
+            entry.write_text("---\nname: " + name + "\ndescription: Synthetic catalog entry\n---\n")
+        names = {s["name"] for s in codex.local_catalog(self.home, self.home)}
+        self.assertIn("system-test", names)
+        self.assertNotIn("dependency", names)
+
     def test_hard_deadline_returns_empty_context(self):
-        with patch("jevkit.codex.subprocess.run", side_effect=subprocess.TimeoutExpired("worker", .05)):
+        with patch("jevkit.codex.subprocess.run", side_effect=subprocess.TimeoutExpired("worker", .05)), patch("jevkit.codex.codex_home", return_value=self.home):
             self.assertEqual(codex._bounded_hook(self.event, deadline=.05), {})
+        receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+        self.assertEqual(receipt["reason_code"], "hard_timeout")
+        self.assertIsNone(receipt["ask_attempts"])
 
     def test_worker_bootstrap_is_cwd_independent_and_windowless(self):
         with patch("jevkit.codex.subprocess.run", return_value=Mock(returncode=0, stdout="{}")) as run:

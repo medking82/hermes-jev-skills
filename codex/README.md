@@ -37,6 +37,9 @@ project scopes. It honors exact disabled paths and explicit-only metadata. It de
 does not rank unrelated plugin caches. For plugin selection, pass the host's current
 available-skills catalog to `select`; exact namespaced IDs and paths are retained.
 
+Discovery stops at skill entrypoints instead of walking resources, dependencies or
+embedded examples. Timeouts/catalog failures leave explicit, prompt-free reason codes.
+
 Only duplicate delivery of the same turn may reuse a prompt-free fingerprint/result.
 There is no cross-turn decision cache or added retry loop. `JEV_CODEX_OFF=1` disables the
 automatic gate. Existing `JEV_PROVIDER` is respected; otherwise the adapter uses TypeSafe
