@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include the shared user `~/.agents/skills` scope in Codex discovery and standalone
+  Jev retirement. Keep matching legacy names in separate recoverable archives,
+  preserve unrelated skills and roll back both scopes together on failure.
+
 - Add the fork's Codex-only unified `$jev` entrypoint, bounded `UserPromptSubmit`
   skill selection, speculative design-mode routing, exact-turn deduplication and
   prompt-free receipts. Preserve explicit models, tools and scope. Archive/disable

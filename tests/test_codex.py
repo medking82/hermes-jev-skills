@@ -147,6 +147,9 @@ class CodexHookTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="codex-routing-", dir=Path(__file__).parent)
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name).resolve()
+        profile = patch.object(Path, "home", return_value=self.home / "profile")
+        profile.start()
+        self.addCleanup(profile.stop)
         self.skill = self.home / "skills/design/SKILL.md"
         self.skill.parent.mkdir(parents=True)
         self.skill.write_text("---\nname: design\ndescription: Polish interfaces\n---\n", encoding="utf-8")
@@ -229,6 +232,15 @@ class CodexHookTests(unittest.TestCase):
         (self.home / "config.toml").write_text('[projects.' + json.dumps(str(project)) + ']\ntrust_level = "trusted"\n')
         names = {s["name"] for s in codex.local_catalog(self.home, project)}
         self.assertIn("project-helper", names)
+
+    def test_shared_user_scope_is_discovered_and_disabled_paths_are_honored(self):
+        entry = Path.home() / ".agents/skills/shared-helper/SKILL.md"
+        entry.parent.mkdir(parents=True)
+        entry.write_text("---\nname: shared-helper\ndescription: Shared user work\n---\n")
+        rows = codex.local_catalog(self.home, self.home)
+        self.assertIn(str(entry), {s["path"] for s in rows})
+        (self.home / "config.toml").write_text('[[skills.config]]\npath = ' + json.dumps(str(entry)) + '\nenabled = false\n')
+        self.assertNotIn("shared-helper", {s["name"] for s in codex.local_catalog(self.home, self.home)})
 
     def test_hard_deadline_returns_empty_context(self):
         with patch("jevkit.codex.subprocess.run", side_effect=subprocess.TimeoutExpired("worker", .05)), patch("jevkit.codex.codex_home", return_value=self.home):

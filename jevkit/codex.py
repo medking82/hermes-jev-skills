@@ -19,7 +19,7 @@ except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit s
 
 from . import client, privacy, skillpick
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
     "animate": "Implement web motion and transitions",
@@ -62,6 +62,11 @@ def codex_home() -> Path:
     return Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser()
 
 
+def user_skill_roots(home: Path) -> tuple:
+    """Codex's runtime skills and the shared user skill scope are distinct."""
+    return tuple(dict.fromkeys((home / "skills", Path.home() / ".agents" / "skills")))
+
+
 def fallback(reason: str) -> dict:
     return {"status": "fail_open", "reason_code": reason, "source": "local", "skills": []}
 
@@ -102,7 +107,7 @@ def local_catalog(home: Path, cwd: Path) -> list:
     path_key = lambda value: os.path.normcase(os.path.abspath(value))
     disabled = {path_key(s["path"]) for s in config.get("skills", {}).get("config", [])
                 if s.get("enabled") is False and isinstance(s.get("path"), str)}
-    roots = [home / "skills"]
+    roots = list(user_skill_roots(home))
     # A hook cannot infer project trust from the prompt. Read project skills only
     # under a configured trusted project; do not walk arbitrary plugin caches.
     trusted = [Path(os.path.abspath(p)) for p, settings in config.get("projects", {}).items()

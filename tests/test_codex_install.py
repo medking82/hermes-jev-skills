@@ -18,6 +18,10 @@ class CodexInstallTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="codex-install-", dir=Path(__file__).parent)
         self.addCleanup(self.temp.cleanup)
         self.home = Path(self.temp.name).resolve()
+        profile = patch.object(Path, "home", return_value=self.home / "profile")
+        profile.start()
+        self.addCleanup(profile.stop)
+        self.shared = Path.home() / ".agents/skills"
         (self.home / "bin").mkdir()
         (self.home / "bin/invoke-hidden.ps1").write_text("# synthetic runner\n")
         self.old = self.home / "skills/jev-search"
@@ -46,7 +50,7 @@ class CodexInstallTests(unittest.TestCase):
         self.assertIn(self.foreign, [h for g in hooks for h in g["hooks"]])
         config = self.installer.tomllib.loads((self.home / "config.toml").read_text())
         self.assertEqual(config["model"], "user-selected")
-        self.assertEqual(len(config["skills"]["config"]), len(self.installer.LEGACY_SKILLS))
+        self.assertEqual(len(config["skills"]["config"]), 2 * len(self.installer.LEGACY_SKILLS))
         self.assertTrue(all(s["enabled"] is False for s in config["skills"]["config"]))
         self.assertTrue((self.home / "tools/hermes-jev-skills/jevkit/codex.py").exists())
 
@@ -56,7 +60,7 @@ class CodexInstallTests(unittest.TestCase):
         hooks = json.loads((self.home / "hooks.json").read_text())["hooks"]["UserPromptSubmit"]
         self.assertEqual(sum(len(g["hooks"]) for g in hooks), 2)
         config = self.installer.tomllib.loads((self.home / "config.toml").read_text())
-        self.assertEqual(len(config["skills"]["config"]), len(self.installer.LEGACY_SKILLS))
+        self.assertEqual(len(config["skills"]["config"]), 2 * len(self.installer.LEGACY_SKILLS))
 
     def test_local_runtime_drift_is_not_overwritten(self):
         self.run_install(True)
@@ -74,6 +78,46 @@ class CodexInstallTests(unittest.TestCase):
         self.assertIn("jev-future", report["retire"])
         self.assertFalse(future.exists())
         self.assertEqual((Path(report["backup"]) / "retired/jev-future/SKILL.md").read_text(), "custom future entrypoint\n")
+
+    def test_shared_user_copies_are_retired_without_backup_collisions_or_other_skill_changes(self):
+        for name in ("jev-search", "jev-future", "unrelated"):
+            entry = self.shared / name / "SKILL.md"
+            entry.parent.mkdir(parents=True)
+            entry.write_text("shared " + name + "\n")
+        report = self.run_install(False)
+        self.assertTrue((self.shared / "jev-search/SKILL.md").exists())
+        self.assertIn(str(self.shared / "jev-search"), report["retire_paths"])
+        report = self.run_install(True)
+        archive = Path(report["backup"]) / "retired"
+        self.assertEqual((archive / "jev-search/SKILL.md").read_text(), "old workflow\n")
+        self.assertEqual((archive / "agents/jev-search/SKILL.md").read_text(), "shared jev-search\n")
+        self.assertEqual((archive / "agents/jev-future/SKILL.md").read_text(), "shared jev-future\n")
+        self.assertFalse((self.shared / "jev-search").exists())
+        self.assertFalse((self.shared / "jev-future").exists())
+        self.assertEqual((self.shared / "unrelated/SKILL.md").read_text(), "shared unrelated\n")
+        config = self.installer.tomllib.loads((self.home / "config.toml").read_text())
+        disabled = {s["path"] for s in config["skills"]["config"] if s["enabled"] is False}
+        self.assertIn((self.shared / "jev-search/SKILL.md").as_posix(), disabled)
+
+    def test_second_scope_retirement_failure_restores_both_scopes(self):
+        shared_old = self.shared / "jev-search/SKILL.md"
+        shared_old.parent.mkdir(parents=True)
+        shared_old.write_text("shared old\n")
+        original = (self.home / "config.toml").read_bytes()
+        replace = self.installer.os.replace
+        calls = []
+        def fail_once(source, destination):
+            calls.append(source)
+            if len(calls) == 2:
+                raise OSError("second scope failure")
+            return replace(source, destination)
+        with patch.object(self.installer.os, "replace", side_effect=fail_once):
+            with self.assertRaisesRegex(OSError, "second scope failure"):
+                self.run_install(True)
+        self.assertTrue(self.old.exists())
+        self.assertEqual(shared_old.read_text(), "shared old\n")
+        self.assertEqual((self.home / "config.toml").read_bytes(), original)
+        self.assertFalse((self.home / "skills/jev/SKILL.md").exists())
 
     def test_failed_retirement_restores_runtime_and_config(self):
         original = (self.home / "config.toml").read_bytes()
