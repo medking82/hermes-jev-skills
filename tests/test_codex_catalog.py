@@ -10,6 +10,7 @@ import uuid
 from jevkit import codex, codex_catalog
 
 
+@unittest.skipIf(codex.tomllib is None, "Codex adapter requires Python 3.11+")
 class SessionPluginTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="session-plugins-", dir=Path(__file__).parent)
