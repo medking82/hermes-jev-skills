@@ -373,6 +373,7 @@ def pick(
     turn: str, skills: List[Dict[str, str]], *, top_k: int = 3, need_threshold: float = 0.5,
     match_threshold: float = 0.5, timeout: float = 5.0, transport: Optional[client.Transport] = None,
     stage_one: Optional[Mapping[int, Mapping[str, float]]] = None, stage_one_latency: Optional[int] = None,
+    ask_fn: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Which skill, if any, this turn needs.
 
@@ -388,7 +389,7 @@ def pick(
     catalog, dropped = skills[:MAX_SKILLS], skills[MAX_SKILLS:]
     reply = _rank(privacy.redact(turn, 2000), catalog, top_k=top_k, need_threshold=need_threshold,
                   match_threshold=match_threshold, timeout=timeout, transport=transport,
-                  stage_one=stage_one, stage_one_latency=stage_one_latency)
+                  stage_one=stage_one, stage_one_latency=stage_one_latency, ask_fn=ask_fn)
     if dropped:
         # "No skill fits" is not a clean answer when some skills were never looked at, so
         # the count travels with every reply and the names go to the log once.
@@ -441,16 +442,18 @@ def _rank(
     turn_text: str, catalog: List[Dict[str, str]], *, top_k: int, need_threshold: float,
     match_threshold: float, timeout: float, transport: Optional[client.Transport],
     stage_one: Optional[Mapping[int, Mapping[str, float]]] = None, stage_one_latency: Optional[int] = None,
+    ask_fn: Optional[Any] = None,
 ) -> Dict[str, Any]:
     # Stage 1: each batch is one Choice over its skills plus "none". The probabilities rank the whole
     # catalog in one round trip, because the batches run side by side. `stage_one`, when given, is
     # that same answer bought by another caller's request (`jevkit/turn.py`), which is why this
     # function takes probabilities rather than a transport in that case.
+    ask = ask_fn or client.ask
     starts = list(range(0, len(catalog), BATCH))
     if stage_one is None:
         def shortlist(start: int) -> Dict[str, Any]:
             question = client.choice(_PICK_INSTRUCTION, _options(catalog, start))
-            return client.ask({"turn": turn_text}, {_pick_name(start): question}, timeout=timeout, transport=transport)
+            return ask({"turn": turn_text}, {_pick_name(start): question}, timeout=timeout, transport=transport)
 
         try:
             with ThreadPoolExecutor(max_workers=min(WORKERS, len(starts))) as pool:
@@ -485,7 +488,7 @@ def _rank(
     for i in finalists:
         questions[f"s{i}"] = client.noul(f"Skill S{i} is the right specialised procedure for this turn")
     try:
-        reply = client.ask(state, questions, timeout=timeout, transport=transport)
+        reply = ask(state, questions, timeout=timeout, transport=transport)
     except client.JevError as error:
         return {"status": "fail_open", "reason": f"Jev unavailable ({error.code})", "skills": []}
     answers = reply["answers"]

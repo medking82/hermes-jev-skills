@@ -2,6 +2,11 @@
 
 A person pointed you here to give their agent Jev. Follow these steps in order. They are the whole job.
 
+For this fork's **Codex-only unified entrypoint**, follow [codex/README.md](codex/README.md)
+and `codex/install.py --check` / `--apply` instead of the multi-agent installer below.
+This keeps the Codex install at one `jev` skill and preserves the standalone upstream
+sources for other agents and future merges. Never bypass Codex hook trust review.
+
 ## The one rule
 
 **You never see the person's TypeSafe API key.** Do not ask for it in chat. Do not read it from any file or secret store. Do not put it in a command, URL or config. If they paste it to you anyway: do not store or repeat it, tell them to replace that key at https://console.typesafe.ai/settings/keys, and continue with step 3, which is the only way a key gets in.

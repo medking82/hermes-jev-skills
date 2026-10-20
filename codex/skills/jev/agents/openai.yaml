@@ -1,0 +1,5 @@
+interface:
+  display_name: "Jev"
+  short_description: "Fast Decisions For Codex Skills And Workflows"
+policy:
+  allow_implicit_invocation: true
