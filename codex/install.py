@@ -15,7 +15,7 @@ import tomllib
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-from jevkit.codex import LEGACY_SKILLS, VERSION
+from jevkit.codex import LEGACY_SKILLS, VERSION, user_skill_roots
 
 
 def sha(data: bytes) -> str:
@@ -159,23 +159,30 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
     config_file = home / "config.toml"
     config_text = config_file.read_text(encoding="utf-8-sig") if config_file.exists() else ""
     config = tomllib.loads(config_text)
-    configured = {str(Path(s["path"]).resolve()) for s in config.get("skills", {}).get("config", [])
+    path_key = lambda value: os.path.normcase(os.path.abspath(value))
+    configured = {path_key(s["path"]) for s in config.get("skills", {}).get("config", [])
                   if s.get("enabled") is False and "path" in s}
+    roots = user_skill_roots(home)
     retired_names = sorted(set(LEGACY_SKILLS) | {
         p.name for p in (repo / "skills").glob("jev-*") if (p / "SKILL.md").is_file()
-    } | {p.name for p in (home / "skills").glob("jev-*") if p.is_dir()})
-    for name in retired_names:
-        old = home / "skills" / name / "SKILL.md"
-        if str(old.resolve()) not in configured:
-            config_text += '\n[[skills.config]]\npath = ' + json.dumps(old.as_posix()) + '\nenabled = false\n'
+    } | {p.name for root in roots for p in root.glob("jev-*") if p.is_dir()})
+    for root in roots:
+        for name in retired_names:
+            old = root / name / "SKILL.md"
+            if path_key(old) not in configured:
+                config_text += '\n[[skills.config]]\npath = ' + json.dumps(old.as_posix()) + '\nenabled = false\n'
+                configured.add(path_key(old))
     tomllib.loads(config_text)
     payload[config_file] = config_text.encode("utf-8")
-    retired = [home / "skills" / name for name in retired_names if (home / "skills" / name).exists()]
+    retired = [root / name for root in roots for name in retired_names if (root / name).exists()]
     for path in retired:
-        if path.is_symlink() or path.resolve().parent != (home / "skills").resolve():
+        # Refuse linked folders/junctions before moving an entire skill directory.
+        if any(p.is_symlink() or getattr(p.stat(follow_symlinks=False), "st_file_attributes", 0) & 1024
+               for p in (path, path.parent, path.parent.parent)) or path.resolve().parent != path.parent.resolve():
             raise ValueError("unsafe retirement target")
     report = {"status": "preview", "skill": str(skill_root), "toolkit": str(toolkit_root),
-              "retire": [p.name for p in retired], "hook_event": "UserPromptSubmit",
+              "retire": sorted({p.name for p in retired}), "retire_paths": [str(p) for p in retired],
+              "hook_event": "UserPromptSubmit",
               "warning": "Review and trust the new hook in Codex /hooks; host activation is not yet verified.",
               "changed_files": sum(not p.exists() or p.read_bytes() != b for p, b in payload.items())}
     if not apply:
@@ -203,7 +210,8 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
         for path in obsolete:
             path.unlink(missing_ok=True)
         for path in retired:
-            dest = backup / "retired" / path.name
+            relative = Path(path.name) if path.parent == home / "skills" else Path("agents") / path.name
+            dest = backup / "retired" / relative
             dest.parent.mkdir(parents=True, exist_ok=True)
             os.replace(str(path), str(dest))
             moved.append((path, dest))
@@ -211,6 +219,7 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
                  if p not in (hook_file, config_file)}
         manifest = {"adapter_version": VERSION, "files": owned, "hook_handler": new_handler,
                     "backup": str(backup), "retired": retired_names,
+                    "retired_paths": [str(p) for p in retired],
                     "source_commit": source_commit, "source_dirty": bool(dirty.stdout.strip())}
         manifest_file.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     except Exception:

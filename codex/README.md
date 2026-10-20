@@ -15,8 +15,10 @@ python -B codex/install.py --apply
 
 Use the workstation's hidden runner on Windows. The preview names the retired
 entrypoints and the hook warning. Apply preserves existing unrelated hooks/config,
-backs up changed runtime files, dynamically archives every standalone `jev-*` directory and disables
-their former discovery paths. Existing keys and provider settings are neither read by
+backs up changed runtime files, dynamically archives every standalone `jev-*` directory
+from both `<codex-home>/skills` and `~/.agents/skills`, and disables their former discovery
+paths. Shared-scope copies have separate backup paths even when their names match;
+unrelated skills are preserved. Existing keys and provider settings are neither read by
 the agent nor changed by the installer. The generic upstream `install.py` installs
 multiple agents/skills; use the Codex-specific installer for this consolidated setup.
 
@@ -32,7 +34,7 @@ selection. For an ambiguous turn, the adapter reuses upstream two-stage skill se
 an independent design-mode question shares stage one's request. It injects a short
 advisory recommendation, never a tool call or a blocking decision.
 
-The hook catalog covers enabled user scopes (including `.system`) and explicitly trusted
+The hook catalog covers both user scopes above (including `.system`) and explicitly trusted
 project scopes. It honors exact disabled paths and explicit-only metadata. It deliberately
 does not rank unrelated plugin caches. For plugin selection, pass the host's current
 available-skills catalog to `select`; exact namespaced IDs and paths are retained.

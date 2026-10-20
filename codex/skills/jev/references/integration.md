@@ -3,8 +3,10 @@
 Source: `medking82/hermes-jev-skills`, `codex/README.md`.
 Use `python codex/install.py --check` then `python codex/install.py --apply` from the
 canonical checkout. The Codex installer does not run the upstream multi-agent installer.
-It installs the toolkit and one `jev` skill, dynamically archives all prior `jev-*` skills and
-disables their original discovery paths in Codex config. Backups stay under Codex home.
+It installs the toolkit and one `jev` skill, dynamically archives all prior `jev-*` skills
+from both `<codex-home>/skills` and `~/.agents/skills`, and disables their original discovery
+paths in Codex config. Backups stay under Codex home; shared-scope copies use a separate
+`retired/agents/` directory so matching names do not overwrite each other.
 
 `UserPromptSubmit` runs the selector before the main model. The hook recommends one
 local skill and can include a design mode from the same stage-one request. Upstream
