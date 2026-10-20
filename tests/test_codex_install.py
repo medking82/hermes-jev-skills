@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -136,24 +137,48 @@ class CodexInstallTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Windows command-shell boundary")
     def test_windows_command_runs_through_cmd_and_powershell(self):
-        # Exercise the real launcher/parser with a transport-free child stub.
+        # Only benign local fixtures run. No real agent, key or network transport.
+        self.home = self.home / "synthetic profile with spaces"
         state = self.home / "jev"
-        state.mkdir()
+        state.mkdir(parents=True)
+        (self.home / "bin").mkdir()
         (state / "run-hook.ps1").write_bytes(self.installer.launcher(Path(sys.executable)))
-        (self.home / "bin/invoke-hidden.ps1").write_text("[Console]::Out.WriteLine('{}')\n")
+        (self.home / "bin/invoke-hidden.ps1").write_text(
+            "param($FilePath, [string[]]$ArgumentList, $WorkingDirectory)\n"
+            "$eventValue = Get-Content -LiteralPath $ArgumentList[-1] -Raw | ConvertFrom-Json\n"
+            "[Console]::Out.WriteLine((@{fixture='launcher-reached'; prompt=$eventValue.prompt} | ConvertTo-Json -Compress))\n",
+            encoding="utf-8")
         command = self.installer.handler(self.home, Path(sys.executable))["commandWindows"]
         pwsh = self.installer.shutil.which("pwsh.exe")
+        shadow = self.home / "benign shadow"
+        shadow.mkdir()
+        # Windows' own where.exe rejects pwsh arguments harmlessly. A bare-name
+        # regression must not reach the real launcher. No foreign code is used.
+        shutil.copyfile(Path(os.environ["SystemRoot"]) / "System32/where.exe", shadow / "pwsh.exe")
+        env = {key: os.environ[key] for key in ("SystemRoot", "WINDIR", "TEMP", "TMP", "COMSPEC", "PATHEXT")
+               if key in os.environ}
+        env["PATH"] = str(shadow)
         invocations = [
             '"' + os.environ["COMSPEC"] + '" /d /s /c "' + command + '"',
             [pwsh, "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", command],
         ]
         for invocation in invocations:
-            run = subprocess.run(invocation, input='{"prompt":"thanks"}', capture_output=True,
+            run = subprocess.run(invocation, input='{"prompt":"synthetic 中文 boundary"}', capture_output=True,
                                  text=True, encoding="utf-8", errors="replace", timeout=10,
+                                 cwd=shadow, env=env,
                                  creationflags=subprocess.CREATE_NO_WINDOW)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertEqual(json.loads(run.stdout), {})
+            self.assertEqual(json.loads(run.stdout), {"fixture": "launcher-reached", "prompt": "synthetic 中文 boundary"})
             self.assertEqual(list((state / "inbox").iterdir()), [])
+
+    def test_windows_shell_paths_reject_unhandled_forms(self):
+        for path in ("pwsh.exe", r"\\server\share\pwsh.exe", r"C:\bad%NAME%\pwsh.exe",
+                     r"C:\bad$env\pwsh.exe", r"C:\bad`name\pwsh.exe", r'C:\bad"name\pwsh.exe',
+                     "C:\\bad\nname\\pwsh.exe"):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                self.installer.windows_shell_path(path)
+        self.assertEqual(self.installer.windows_shell_path(r"C:\Program Files\PowerShell\7\pwsh.exe"),
+                         'C:\\"Program Files\\PowerShell\\7\\pwsh.exe"')
 
 
 if __name__ == "__main__":

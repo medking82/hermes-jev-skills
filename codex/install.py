@@ -5,7 +5,8 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+import re
 import shutil
 import shlex
 import subprocess
@@ -91,6 +92,20 @@ exit 0
 """).encode("utf-8")
 
 
+def windows_shell_path(value: str) -> str:
+    """A literal drive-rooted path usable as a command in both cmd and PowerShell.
+
+    Keeping the drive/root outside quotes makes PowerShell invoke the path rather
+    than evaluate a quoted string. Reject unsupported expansion/control syntax;
+    never fall back to a basename, PATH lookup or an unquoted path.
+    """
+    path = PureWindowsPath(value)
+    if (not path.is_absolute() or not re.fullmatch(r"[A-Za-z]:", path.drive)
+            or any(char in value for char in '\"`$%!&|<>^\r\n\x00')):
+        raise ValueError("Windows hook paths require a literal absolute drive path")
+    return path.anchor + '"' + str(path)[len(path.anchor):] + '"'
+
+
 def handler(home: Path, python: Path) -> dict:
     command = shlex.join([str(python), "-B", str(home / "skills/jev/scripts/jev.py"), "hook"])
     result = {"type": "command", "command": command, "timeout": 6,
@@ -99,12 +114,10 @@ def handler(home: Path, python: Path) -> dict:
         pwsh = shutil.which("pwsh.exe")
         if not pwsh or not (home / "bin/invoke-hidden.ps1").is_file():
             raise ValueError("PowerShell 7 and the workstation hidden runner are required")
-        result["commandWindows"] = subprocess.list2cmdline([
-            # Codex evaluates this in the configured shell. A quoted absolute
-            # executable is a string expression in PowerShell, not an invocation.
-            # The checked executable name works in both PowerShell and cmd.exe.
-            Path(pwsh).name, "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
-            "-File", str(home / "jev/run-hook.ps1")])
+        script = str(home / "jev/run-hook.ps1")
+        windows_shell_path(script)  # Apply the same no-expansion path validation.
+        result["commandWindows"] = (windows_shell_path(str(Path(pwsh).resolve(strict=True))) +
+            ' -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -File "' + script + '"')
     return result
 
 

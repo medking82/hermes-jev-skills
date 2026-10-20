@@ -57,8 +57,12 @@ platform-specific documentation, not Codex switches or authorization to launch a
 New upstream references appear in `references/upstream/index.json`; read one only when
 it applies to the request. Their presence enables no new models, workers or services.
 Keep the requested browser and driver, and honor all tool bans. The selector's local
-catalog covers enabled user and trusted project scopes; it cannot certify the current
-session's plugin availability. The host's available-skills catalog takes precedence.
+catalog covers enabled user/trusted project scopes and plugins listed in this session's
+host-supplied catalog. It checks current disables and explicit-only metadata, preserves
+plugin namespaces, and falls back to local scopes when session evidence is unavailable.
+The receipt identifies the catalog source, timestamp/hash and admitted plugin IDs. A
+recommendation does not establish external service access; the main model checks actual
+tools, task fit and authorization before reading or executing the skill.
 
 ## Preserve The User's Principles
 
