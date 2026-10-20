@@ -6,8 +6,7 @@ on:
     - cron: '23 2 * * *'
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: codex-upstream-sync
@@ -18,9 +17,16 @@ jobs:
     if: github.repository == 'medking82/hermes-jev-skills'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.merge.outputs.changed }}
+      upstream_sha: ${{ steps.merge.outputs.upstream_sha }}
+      tree_sha: ${{ steps.merge.outputs.tree_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -43,22 +49,60 @@ jobs:
           git switch -c codex/upstream-sync
           git merge --no-edit upstream/main
           echo 'changed=true' >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
+          echo "tree_sha=$(git rev-parse HEAD^{tree})" >> "$GITHUB_OUTPUT"
       - name: Validate Toolkit And Codex Integration
         if: steps.merge.outputs.changed == 'true'
         run: |
           python -B codex/check.py --full
+
+  publish:
+    needs: integrate
+    if: needs.integrate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # This runner has never executed upstream tests. Do not restore validation artifacts.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Recreate The Validated Merge Without Executing Upstream Code
+        id: prepare
+        shell: bash
+        env:
+          UPSTREAM_SHA: ${{ needs.integrate.outputs.upstream_sha }}
+          TREE_SHA: ${{ needs.integrate.outputs.tree_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$UPSTREAM_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$TREE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git config core.hooksPath /dev/null
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp codex/upstream-pr.md "$RUNNER_TEMP/upstream-pr.md"
+          git remote add upstream https://github.com/kerpopule/hermes-jev-skills.git
+          git fetch --no-tags upstream "$UPSTREAM_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$UPSTREAM_SHA"
+          git switch -c codex/upstream-sync
+          git merge --no-edit "$UPSTREAM_SHA"
+          test "$(git rev-parse HEAD^{tree})" = "$TREE_SHA"
       - name: Publish An Integration PR
-        if: steps.merge.outputs.changed == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           gh auth setup-git
           git fetch origin codex/upstream-sync:refs/remotes/origin/codex/upstream-sync || true
-          git push --force-with-lease origin HEAD:refs/heads/codex/upstream-sync
+          git -c core.hooksPath=/dev/null push --force-with-lease origin HEAD:refs/heads/codex/upstream-sync
           if ! gh pr view codex/upstream-sync --json number >/dev/null 2>&1; then
             gh pr create --base main --head codex/upstream-sync \
               --title 'Sync Upstream Jev With The Codex Adapter' \
-              --body-file codex/upstream-pr.md
+              --body-file "$RUNNER_TEMP/upstream-pr.md"
           fi

@@ -120,7 +120,7 @@ def install_state(sha,ci,tests,*,repo,home,switches,git,run,dry=False):
         state['action']='would refresh (dry run)'
         return state
     before=_read(home/'jev/state.json')
-    rc,out,err=run(['/usr/bin/python3','install.py','--enable','none'],cwd=repo,timeout=300,
+    rc,out,err=run(['/usr/bin/python3','install.py','--hermes-root-only','--enable','none'],cwd=repo,timeout=300,
                    env={**os.environ,'HERMES_HOME':str(home)})
     try:
         p=inspect()
