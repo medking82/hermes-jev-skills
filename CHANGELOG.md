@@ -39,6 +39,15 @@
 
 - Fix #48 (thanks @zimu002): remove the unsupported `provides_middleware` manifest declaration. Hermes v0.22.2 and current hosts register `llm_request` via `PluginContext.register_middleware` in plugin code; the declaration only produced a warning and never enabled the middleware. Add a regression preserving code registration and a warning-free manifest.
 
+## 0.24.1 (2026-10-20)
+
+- Limit checked automatic stewardship refreshes to the selected Hermes root. Preserve
+  other agents' skills, CLI commands, Claude configuration and Hermes profile installs;
+  add a synthetic-home regression through the real installer callback.
+- Isolate upstream sync validation in a read-only job. Rebuild the pinned, validated
+  merge tree on a fresh trusted checkout for publication, disable Git hooks, and keep
+  PR text from the trusted baseline. Add offline workflow boundary regressions.
+
 ## 0.24.0 (2026-10-16)
 
 Released by the daily Jev steward: 3 commit(s) on main since v0.23.1.

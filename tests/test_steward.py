@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import tempfile
 import unittest
 from unittest.mock import Mock,patch
@@ -34,15 +35,79 @@ class StewardTests(unittest.TestCase):
                 run.assert_not_called();self.assertFalse(state['main_match'])
                 self.assertIn('action',state)
 
-    def test_verified_refresh_uses_enable_none_and_rechecks(self):
+    def test_verified_refresh_is_root_only_and_rechecks(self):
         p=dict(checkout_at_main=True,checkout_dirty=False,installed_matches_checkout=False,matches_main=False)
         done={**p,'installed_matches_checkout':True,'matches_main':True}
         with tempfile.TemporaryDirectory() as folder, patch('jevkit.provenance.check_install',side_effect=[p,done]) as inspect:
             run=Mock(return_value=(0,'',''))
             state=steward.install_state('a'*40,{'status':'success'},{'status':'green'},repo=folder,home=folder,switches=folder,git=Mock(),run=run)
             self.assertEqual(inspect.call_count,2);run.assert_called_once()
-            self.assertEqual(run.call_args.args[0],['/usr/bin/python3','install.py','--enable','none'])
+            self.assertEqual(run.call_args.args[0],['/usr/bin/python3','install.py','--hermes-root-only','--enable','none'])
             self.assertTrue(state['main_match']);self.assertTrue(state['switches_unchanged'])
+
+    def test_verified_refresh_preserves_other_agent_installs_and_profiles(self):
+        from test_install import CONFIG, run_installer
+
+        def snapshot(folder):
+            return {p.relative_to(folder).as_posix():
+                    ('link', str(p.readlink())) if p.is_symlink() else
+                    ('file', hashlib.sha256(p.read_bytes()).hexdigest(), p.stat().st_mtime_ns) if p.is_file() else ('dir',)
+                    for p in folder.rglob('*')}
+
+        with tempfile.TemporaryDirectory() as temporary:
+            user = Path(temporary)
+            home = user / '.hermes'
+            fixtures = {
+                '.hermes/config.yaml': CONFIG,
+                '.hermes/jev/state.json': '{"routing":"off"}',
+                '.hermes/profiles/other/config.yaml': CONFIG,
+                '.hermes/profiles/other/bin/jev': 'existing lane command',
+                '.claude/skills/jev-search/SKILL.md': 'existing Claude skill',
+                '.claude/agents/jev-lane-small.md': 'existing user agent',
+                '.claude/CLAUDE.md': 'existing Claude instructions',
+                '.codex/skills/jev/SKILL.md': 'unified Codex entrypoint',
+                '.codex/config.toml': 'model = "user-selected"\n',
+                '.codex/hooks.json': '{"hooks":{}}',
+                '.codex/backups/retired/jev-search/SKILL.md': 'retired skill',
+                '.agents/skills/unrelated/SKILL.md': 'unrelated shared skill',
+                '.local/bin/jev': 'existing user command',
+            }
+            for name, content in fixtures.items():
+                target = user / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding='utf-8')
+            protected = [user / name for name in ('.claude', '.codex', '.agents', '.local')]
+            protected.append(home / 'profiles')
+            before = [snapshot(folder) for folder in protected]
+            config = (home / 'config.yaml').read_bytes()
+            reports = []
+
+            def run(argv, *, cwd, timeout, env):
+                self.assertEqual(Path(cwd), Path(__file__).resolve().parents[1])
+                self.assertEqual(argv[:2], ['/usr/bin/python3', 'install.py'])
+                self.assertEqual(Path(env['HERMES_HOME']), home)
+                code, report = run_installer(argv[2:], user, hermes_home=home)
+                reports.append(report)
+                return code, '', ''
+
+            pending = dict(checkout_at_main=True, checkout_dirty=False,
+                           installed_matches_checkout=False, matches_main=False)
+            done = {**pending, 'installed_matches_checkout': True, 'matches_main': True}
+            with patch.object(Path, 'home', return_value=user), \
+                    patch('jevkit.provenance.check_install', side_effect=[pending, done]):
+                state = steward.install_state('a' * 40, {'status': 'success'}, {'status': 'green'},
+                    repo=Path(__file__).resolve().parents[1], home=home, switches=home / 'jev',
+                    git=Mock(), run=run)
+            self.assertEqual([snapshot(folder) for folder in protected], before)
+            self.assertEqual((home / 'config.yaml').read_bytes(), config)
+            self.assertEqual(reports[0]['scope'], 'hermes-root-only')
+            self.assertEqual(reports[0]['skill_folders'], [])
+            self.assertEqual(reports[0]['hermes']['profiles'], 0)
+            self.assertEqual((home / 'plugins/hermes-jev/jevkit/steward.py').read_bytes(),
+                             Path(steward.__file__).read_bytes())
+            self.assertTrue((home / 'bin/jev').exists())
+            self.assertEqual(state['action'], 'refreshed')
+            self.assertTrue(state['switches_unchanged'])
 
     def test_provenance_failure_cannot_install(self):
         with tempfile.TemporaryDirectory() as folder, patch('jevkit.provenance.check_install',side_effect=ValueError('fixture invalid identity')):
