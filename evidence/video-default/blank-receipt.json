@@ -1,0 +1,34 @@
+{
+  "mode": "default_triage",
+  "model": "jev-1.14.0",
+  "threshold": 0.9,
+  "final_acceptance": false,
+  "source_sha256": "f0125b3c4524fbcb8b9fa2c93926d7a8d0cec90bf9cf481e505a8fff7d24364d",
+  "requirements_sha256": "6620f67c9ac5801b3b2023914b2181a8b38b0243a8d8e3de01e2ce2b66205f55",
+  "question_sha256": "231385a1c073b59fdf89f819ea4e9220346d9869eb23c51154d82f822727023d",
+  "frames": [
+    {
+      "id": "h32",
+      "decision": "review",
+      "reason": "model",
+      "choice": "clear",
+      "confidence": 0.77,
+      "input_tokens": 1557,
+      "wall_ms": 313.683,
+      "audit_required": false
+    }
+  ],
+  "model_calls": 1,
+  "input_tokens": 1557,
+  "errors": 0,
+  "estimated_list_usd": null,
+  "estimate_basis": "Configured list rate, not an invoice",
+  "wall_seconds": 0.314,
+  "review_ids": [
+    "h32"
+  ],
+  "audit_ids": [],
+  "screening_complete": true,
+  "job_sha256": "68c96911ee5342e15dbc21908dc68cf794b57600c00a580604386ea2f6f02bb6",
+  "implementation_sha256": "33af2e4377ce7a50eb89e85a3d1fd84e89fd4802b5e3b1ebde817b2efdea8360"
+}

@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "test_count": 1545,
+  "seconds": 34.815,
+  "passed": true,
+  "new_trial_boundary_tests": 12,
+  "scope": "Full offline repository suite, not independent review"
+}

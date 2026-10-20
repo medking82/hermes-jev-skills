@@ -1,0 +1,41 @@
+{
+  "frames": 33,
+  "defects": 16,
+  "clean": 17,
+  "raw_clear_misses": [
+    "h02",
+    "h19"
+  ],
+  "candidate_clear_misses": [],
+  "routed_or_audited_misses": [],
+  "clean_flagged": [],
+  "clean_referred": [
+    "h03",
+    "h05",
+    "h06",
+    "h07",
+    "h09",
+    "h10",
+    "h11",
+    "h15",
+    "h18",
+    "h20",
+    "h22",
+    "h23",
+    "h25",
+    "h26",
+    "h29",
+    "h31",
+    "h32"
+  ],
+  "model_calls": 33,
+  "input_tokens": 52087,
+  "wall_seconds": 6.439,
+  "estimated_list_usd": 0,
+  "audit_frames": 0,
+  "limits": [
+    "Synthetic single-frame holdout, not a temporal or general-quality benchmark",
+    "Flags and audits are routing, not completed review",
+    "No frontier time/cost comparison"
+  ]
+}

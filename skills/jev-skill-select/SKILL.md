@@ -20,6 +20,8 @@ The narrow local gate also recognises pure social openers (`how are you doing to
 
 ## On Hermes
 
+For Blender work, load `jev-blender` as the default domain entry point, then the relevant geometry/production skills. This does not enable always-on inference or change model routing; its code-first gate skips routine calls and keeps actual artifact verification local.
+
 `/jev skills on` makes the `hermes-jev` plugin do this once per fresh turn. When a skill clearly fits, a one-line suggestion is attached to the turn naming it; load it with `skill_view` unless it plainly does not apply. It asks Hermes which folders this session actually loads — the profile's skills folder and every `skills.external_dirs` folder — and it respects `skills.disabled`. Project-local skill folders are not read.
 
 With `/jev routing on` as well, the stage-1 questions travel in routing's request instead of one of their own (see the cost note above), the two answers are read by the code that owns each decision, and the only extra thing in the log is a `merged` line. If that shared request fails, no skill is suggested and routing asks for itself on the next hook, which is the behaviour each feature already had on its own.

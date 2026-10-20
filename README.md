@@ -26,8 +26,10 @@ That is what [Jev](https://docs.typesafe.ai) is. It is TypeSafe's decision model
 | **Mailbox sorting** | Which lane an inbox message belongs in — needs reply, updates, promotional, sales, spam — and whether it is worth a person's attention | ~0.44 s p50 per message, $0.00002 each |
 | **Computer use** | The next GUI action, from a table of actions you already judged safe. `--plan` splits a multi-step command once, up front | ~0.5 s per decision |
 | **Browser use** | The next page action, same contract | ~0.4 s per step |
+| **[Blender](docs/blender.md)** | Default code-first checks and execution selection; bounded read-only Jev advice only for unclear expensive probes | Local gates; optional advice capped at 1 s |
+| **[Video QA](docs/video-qa.md)** | Default local-first, authorized-image triage, mandatory audits and privacy/full-review fallback; never final acceptance | The broader 33-frame synthetic holdout yielded no confident clears, so no general review-time saving is established |
 
-Eleven skills ship as plain `SKILL.md` files, so they are not Hermes-only. The same folder works in Claude Code, Codex, or anything that reads a skill file.
+Thirteen skills ship as plain `SKILL.md` files, so they are not Hermes-only. The same folder works in Claude Code, Codex, or anything that reads a skill file.
 
 ```bash
 jev mail --file inbox.json             # sort a mailbox into lanes
@@ -95,6 +97,14 @@ The page lives on an unguessable one-time URL, refuses requests with a foreign `
 
 **Do not paste your key into a chat.** If you already did, make a new one.
 
+## Evidence, defaults and reporting
+
+Start with the [workflow evidence matrix](docs/workflow-evidence.md) and
+[measurement/provenance contract](docs/measurement-and-provenance.md). Deterministic checks
+run locally; a Jev call must earn its cost. Preserve GUI/browser chooser requirements,
+privacy gates and final verification. Report coverage and fallback cost, not only latency.
+Installed feature branches, published main and already-loaded processes are different facts.
+
 ## What leaves your machine
 
 Jev is a cloud API, so this is spelled out rather than implied:
@@ -108,7 +118,8 @@ Jev is a cloud API, so this is spelled out rather than implied:
 - **Social research skill**: no new request shape. Discovery ranking and final sufficiency use `jev search`, so the question, tried queries and candidate queries leave the machine only after a mandatory local gate clears them. Each all-clear social result is projected to an opaque id, a platform/evidence-level title without the account handle, its canonical public URL only when that complete URL is not person-marked, and at most 900 characters of source-grounded paraphrase and coverage tags without direct comment text, engagement counts or timestamps. The full local evidence row, screenshots and raw page data are not sent. A public URL whose path, slug or query identifies an account or person is person-marked. If the question, queries or any candidate field are private, person-marked or sensitive, the whole call is skipped; the ledger stays local and intact while selection uses only the locally screened head of the original order. Jev unavailability takes that same fail-open path and never restores a locally rejected entry.
 - **Mailbox sorting** (`jev mail`): the subject and up to 2,500 characters of the body, redacted; the sender's **domain** (never the mailbox); a local class read off the address alone (**automated** for a mailbox that cannot receive a reply, **role** for a shared one a team reads, **list**, or **person**); the message's timestamp, and only the timestamp — a `Received:` header is reduced to the date it carries, because the rest of it is the recipient's address and the internal IP of every hop; whether the mail carries a real `List-Unsubscribe` header, and separately whether the body merely mentions unsubscribing; and whether you have replied in the thread. Mail is **decoded before it is screened** — quoted-printable, percent-encoding, HTML entities and base64 runs — because a newsletter footer carries your own address percent-encoded in the unsubscribe link and base64'd in the tracking link, and a plain-text redactor sees neither. Query strings are stripped from URLs for the same reason. A message that looks like it holds a secret is not sent at all, and the check runs on the decoded text, so a base64 MIME body cannot carry a key past it. What redaction does **not** remove: a person's display name (`Jane Vale <[email]>`) is sent as written. The body is also screened for text aimed at an agent; a hit is **flagged** on the result and never filed away, because one sentence in a body would otherwise be the most useful thing an attacker could reach here.
 - **Computer and browser use**: the goal, short element labels, and your action descriptions. Never screenshots, page text or field values. A goal or label that looks sensitive is refused before sending.
-- **Vision shadow, cloud half** (`/jev vision_cloud shadow`, Hermes only, off by default): the **picture** a `vision_analyze` call looked at, and its question, redacted. This is the one feature that sends images, and a picture cannot be redacted, so it has its own switch, separate from the local `/jev vision shadow` (which never sends anything), and its own kill switch `VISION_CLOUD_OFF`. A question that looks sensitive is not sent. Calls are sampled (`vision_sample`, default 0.25) and capped per day (`vision_daily_max`, default 40). The log holds ids, hashes and answer classes, never the picture, path or question. See [docs/images.md](docs/images.md).
+- **Vision shadow, cloud half** (`/jev vision_cloud shadow`, Hermes only, off by default): the **picture** a `vision_analyze` call looked at, and its question, redacted. This switch-controlled shadow sends images, and a picture cannot be reliably redacted, so it has its own switch, separate from the local `/jev vision shadow` (which never sends anything), and its own kill switch `VISION_CLOUD_OFF`. A question that looks sensitive is not sent. Calls are sampled (`vision_sample`, default 0.25) and capped per day (`vision_daily_max`, default 40). The log holds ids, hashes and answer classes, never the picture, path or question. See [docs/images.md](docs/images.md).
+- **Explicit image callers and video triage**: authorized synthetic/public frames and task requirements can be sent by the image-action demo or default video-QA helper independently of the general cloud-vision shadow switch. The switch is not a global egress firewall. Unknown/private/customer media stays local; generated media can still be private or license-restricted. No label, account data or private project path belongs in these requests. Logs contain hashes and metered metadata, not pixels/state/question text. See [video QA](docs/video-qa.md).
 - **Decision policies** (`jev decide`, `jev batch`, and the plugin's opt-in `/jev gate shadow` and `/jev decide_tools on`): only the state fields the policy names, each redacted and capped at 1,500 characters. A state that looks like it holds a secret is not sent. The `facts` your code hands in are never sent, and a decision a pre-rule makes from them sends nothing at all. Lanes send the task text (redacted, capped at 3,000 characters) and, per loop step, a diff stat and the last lines of each check you ran; never a whole log, a file or a path outside the diff stat. The command gate sends the tool name, the command with shell comments stripped (up to 2,000 characters), the pattern keys your host already flagged and the *kind* of folder it runs in (home, repo, scratch…), never the path. It never sends the agent's own description of the command. Your own approval policy text (`approvals.smart_policy`), when set, goes in the question as trusted instructions.
 
 Logs hold decisions only (tier, model, confidence, latency). Never prompt text.
@@ -130,7 +141,7 @@ Safety rails that do not depend on Jev being right:
 
 ```
 jevkit/            the library and the `jev` command (stdlib only)
-skills/            eleven SKILL.md skills, agent-agnostic
+skills/            thirteen SKILL.md skills, agent-agnostic
 hermes/plugin/     the Hermes plugin
 router-dashboard/  the model routing page (`jev dashboard`)
 install.py         installer / uninstaller

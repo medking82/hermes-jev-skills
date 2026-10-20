@@ -1,0 +1,81 @@
+{
+  "auto_promote": false,
+  "billing_verified": false,
+  "cap_usd": "1.0",
+  "collection_mode": "live",
+  "conservative_bound_usd": "0.002642514000000000377502",
+  "elapsed_s": 9.39,
+  "known_rate_estimate_usd": "0.002642514000000000377502",
+  "model": "jev-1.14.0",
+  "phases": [
+    {
+      "arms": {
+        "A": {
+          "clean_clears": 0,
+          "clean_referred": 6,
+          "frames": 12,
+          "input_tokens": 14311,
+          "unsafe_clears": 0
+        },
+        "B": {
+          "clean_clears": 6,
+          "clean_referred": 0,
+          "frames": 12,
+          "input_tokens": 17147,
+          "unsafe_clears": 0
+        }
+      },
+      "auto_promote": false,
+      "billing_verified": false,
+      "note": "Recorded-decision recount only; fewer referrals is not measured end-to-end savings.",
+      "phase": "development"
+    },
+    {
+      "arms": {
+        "A": {
+          "clean_clears": 0,
+          "clean_referred": 6,
+          "frames": 12,
+          "input_tokens": 14308,
+          "unsafe_clears": 0
+        },
+        "B": {
+          "clean_clears": 6,
+          "clean_referred": 0,
+          "frames": 12,
+          "input_tokens": 17151,
+          "unsafe_clears": 0
+        }
+      },
+      "auto_promote": false,
+      "billing_verified": false,
+      "note": "Recorded-decision recount only; fewer referrals is not measured end-to-end savings.",
+      "phase": "confirmation"
+    }
+  ],
+  "schema": "jev.question_ab_run_v1",
+  "stop_reason": null,
+  "threshold": 0.9,
+  "attempts": 48,
+  "successful": 48,
+  "unknown_failures": 0,
+  "raw_call_wall_ms": {
+    "A": 4576.253,
+    "B": 4755.36
+  },
+  "freeze_sha256": "98f91acdc83e9852eeb68ef067c9b15317e9128de99040a9cc917e8697eb20af",
+  "raw_receipt_sha256": "aa1d0c145fa9678bc174a033b4e087b58c97349f19be591a893db909c54e7039",
+  "manifest_sha256": "f9522ccb608a6b0e588ceed37545f8124d752755431685ff1ea560694679cdbe",
+  "labels_sha256": "1e0578cc91c0a6b0a0e284ea093dbccefc266b6be97b31d1ca81b6797ec7c1be",
+  "source_files": {
+    "jevkit/client.py": "54326355354d1d4ec1f6044ac8a40a562bf215ce0b067804f4d1a388d9a1b240",
+    "jevkit/images.py": "4a711bb42e9d303a6c65427f4cacf192792afa291ef4cf9ebc73ab17cf563331",
+    "jevkit/ledger.py": "715dfb13e0ecd7259df53b79ee5cdea5f7275eb5ccb2e3dcba8c5ef5b56b7e0f",
+    "jevkit/usage.py": "b5b5659875a331bf935f05b488e734bb4314e5dc801ffad0dc58edca6d4e6e01",
+    "jevkit/video_qa.py": "240a52e1bf6552323622492af7c16efb652c19d3f2a9041c4fa3903297595811",
+    "jevkit/video_qa_ab.py": "e4881daa58eeaa064116ce5ea0a4acb6e3995570035838ee6c6a838d016a357f",
+    "jevkit/video_qa_ab_run.py": "016477bd44a28b71c1d142cc73a996b362da6bcd47a52cc1af5c94bf69c0b0be",
+    "scripts/run_video_qa_ab.py": "be005ba5532fe17a011ef79955e7c1e8bbc69c6c480c5325f2e53180256bd95a",
+    "tests/test_video_qa_ab_run.py": "30528e36cbc1eabc0e85e54b4b2000dd4a19fb1ecfd9a0fe6ddf39cf5240e5cb"
+  }
+}

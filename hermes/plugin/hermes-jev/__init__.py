@@ -423,8 +423,26 @@ def _on_post_tool_call(tool_name: str = "", args: Any = None, session_id: str = 
     return None
 
 
+def _can_set_effort(request: Dict[str, Any]) -> bool:
+    """Respect explicit user effort and disabled reasoning before picking/logging."""
+    if "reasoning_effort" in request:
+        return False
+    extra = request.get("extra_body")
+    if isinstance(extra, dict) and "reasoning" in extra:
+        return False
+    responses = "input" in request and "messages" not in request
+    if responses:
+        reasoning = request.get("reasoning")
+        return isinstance(reasoning, dict) and "effort" not in reasoning
+    return "reasoning" not in request
+
+
 def _with_effort(request: Dict[str, Any], level: str) -> Dict[str, Any]:
-    """Set only the standard top-level field; never touch provider-specific extra_body."""
+    """Use the declared wire, preserving explicit effort, siblings and disabled mode."""
+    if not _can_set_effort(request):
+        return request
+    if "input" in request and "messages" not in request:
+        return {**request, "reasoning": {**request["reasoning"], "effort": level}}
     return {**request, "reasoning_effort": level}
 
 
@@ -519,14 +537,14 @@ def _on_llm_request(request: Optional[Dict[str, Any]] = None, session_id: str = 
     # the mode gates the swap, and a kept model still wants the right thinking budget.
     # Off by default; `jevkit/effort.py` returns None whenever the table is not configured
     # or the answer is not there, and None leaves the request alone.
+    # The notice describes the current outgoing request, not an earlier request in this turn.
+    turn.pop("effort", None)
     effort_level = None
     model_key = f"{catalog.HERMES_ALIASES.get(provider, provider)}:{effective}"
     # Shadow is observation only. Explicit user effort, including a provider-specific
     # reasoning object, always wins. An exact provider:model capability declaration is
     # required: neither an arbitrary model nor a custom relay can be assumed to accept it.
-    if mode == "on" and "reasoning_effort" not in request and not (
-            isinstance(request.get("extra_body"), dict) and
-            "reasoning" in request["extra_body"]):
+    if mode == "on" and _can_set_effort(request):
         try:
             config = route.load_config()
             levels = effort.levels_from_config(config)

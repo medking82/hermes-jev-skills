@@ -38,6 +38,10 @@ jev route --prompt "<the task, in the person's words>" --current "<provider:mode
 
 Use `model_id` from the reply. `routed: false` means stay where you are; `reason` says why. Relay `notice` if the person likes to see routing.
 
+## Effort delivery and evidence
+
+Preserve explicit manual effort, including `none` and `off`. Chat Completions uses top-level `reasoning_effort`; Responses uses `reasoning.effort` only when a reasoning object is already enabled and no effort is explicitly set. Never enable disabled reasoning or emit an applied-effort notice for an unchanged request. Shadow remains observational. Available pools are not active configuration, and model confidence needs task-specific qualification. See [fleet guidance](../../docs/using-jev-in-a-hermes-fleet.md) and [measurement/provenance](../../docs/measurement-and-provenance.md).
+
 ## Lanes: delegating a task, and every step after it
 
 For work you hand to a sub-agent or worker, finish with the smallest model and lowest effort that still gets it right. Jev decides; it never writes code, patches or designs.

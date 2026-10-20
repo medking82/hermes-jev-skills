@@ -38,6 +38,9 @@ ZEN_ENDPOINT = "https://opencode.ai/zen/v1/systemone"
 ZEN_MODEL = "jev-1.13-free"
 MAX_RESPONSE_BYTES = 1_000_000
 MAX_STATE_CHARS = 60_000
+from contextvars import ContextVar
+_SINGLE_ATTEMPT = ContextVar("jev_single_http_attempt", default=False)
+
 USER_AGENT = "hermes-jev-skills/0.1"
 
 State = Union[str, Mapping[str, Any], Sequence[Any]]
@@ -334,7 +337,7 @@ def _http_transport(body: bytes, headers: Dict[str, str], timeout: float, url: s
             # A keep-alive socket the server closed while it was idle: the request never
             # reached it. One fresh connection; if that fails too, the caller retries.
             _POOL.drop(connection)
-            if attempt:
+            if attempt or _SINGLE_ATTEMPT.get():
                 raise JevError("network") from None
             continue
         if len(raw) > max_bytes:
@@ -690,7 +693,11 @@ def ask(
         if remaining <= 0.05:
             raise JevError("timeout")
         try:
-            raw = send(body, headers, remaining)
+            single = _SINGLE_ATTEMPT.set(retries == 0)
+            try:
+                raw = send(body, headers, remaining)
+            finally:
+                _SINGLE_ATTEMPT.reset(single)
             break
         except JevError as error:
             attempt += 1

@@ -1,0 +1,94 @@
+{
+  "schema": "jev.video_qa_v1",
+  "cloud_policy": "authorized_synthetic",
+  "review_risk": "routine",
+  "source_sha256": "f0125b3c4524fbcb8b9fa2c93926d7a8d0cec90bf9cf481e505a8fff7d24364d",
+  "local_checks": {
+    "decode": "pass",
+    "geometry": "pass",
+    "duration": "pass",
+    "cadence": "pass",
+    "audio": "not_applicable"
+  },
+  "requirements": {
+    "required_text": [
+      "Build with AI",
+      "Explore"
+    ],
+    "required_elements": [
+      "a button labelled Explore"
+    ],
+    "palette": [
+      "#28b4ad",
+      "#102037"
+    ],
+    "allow_blank": false,
+    "allow_overlap": false
+  },
+  "frames": [
+    {
+      "id": "h00",
+      "image": "frames/000.png",
+      "sha256": "cbbd862325c4c7952e85a5bd291dc903293e8a3b3f61986eff22401e0f75bd55",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h01",
+      "image": "frames/001.png",
+      "sha256": "c14830d9b5bfcc83937f73116b3b9cfef56ac6a3d5cfb8a3d50d5064afc1829a",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h02",
+      "image": "frames/002.png",
+      "sha256": "ef00c2d20dbe9247d4de051838bb7376b12e4080fcfa2e4f44357f9c0e5b6a1c",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h03",
+      "image": "frames/003.png",
+      "sha256": "00a4a16da535dcb362044d4c48801e7c8901f80caa9f42e554c335f75db37e8c",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h04",
+      "image": "frames/004.png",
+      "sha256": "e7b30c6c3a6fc19ef6945e248fdef688434501241c471dee1085b2f576d52c1b",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h05",
+      "image": "frames/005.png",
+      "sha256": "c0289cfc4df2c43ce661c02d422c831cd19e8fed1691e861f6370f6ca7024d2f",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h06",
+      "image": "frames/006.png",
+      "sha256": "332088394afb042f47488693b35d14cf2289edc30b3eccc01c5dfe21dd0b5130",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    },
+    {
+      "id": "h07",
+      "image": "frames/007.png",
+      "sha256": "1c987d54dc79a87bf312612b5eab73432b009616d43bb56d6cb2cc0a2d196221",
+      "local": "pass",
+      "scene": "studio",
+      "transition": false
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "holdout_estimated_list_usd": 0.00218765,
+  "holdout_initial_meter_bug": "Original receipts used a nonexistent ledger key; their missing/zero estimate is not a measured zero bill.",
+  "live_calls": 41,
+  "live_input_tokens": 64719,
+  "total_configured_list_estimate_usd": 0.0027182,
+  "unchanged_question": true,
+  "distinct_labeled_frames": 33,
+  "notes": [
+    "Final smoke repeats eight already-tested frames; not additional heldout accuracy evidence.",
+    "The general question and 0.9 floor were not changed after seeing misses.",
+    "No external frontier review benchmark; zero demonstrated review-work reduction."
+  ]
+}

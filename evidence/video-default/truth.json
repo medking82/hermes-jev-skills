@@ -1,0 +1,213 @@
+{
+  "rows": [
+    {
+      "id": "h00",
+      "kind": "overlap",
+      "label": "defect",
+      "style": "studio"
+    },
+    {
+      "id": "h01",
+      "kind": "missing",
+      "label": "defect",
+      "style": "studio"
+    },
+    {
+      "id": "h02",
+      "kind": "tiny",
+      "label": "defect",
+      "style": "studio"
+    },
+    {
+      "id": "h03",
+      "kind": "clean",
+      "label": "clean",
+      "style": "studio"
+    },
+    {
+      "id": "h04",
+      "kind": "clipped",
+      "label": "defect",
+      "style": "studio"
+    },
+    {
+      "id": "h05",
+      "kind": "clean",
+      "label": "clean",
+      "style": "studio"
+    },
+    {
+      "id": "h06",
+      "kind": "clean",
+      "label": "clean",
+      "style": "studio"
+    },
+    {
+      "id": "h07",
+      "kind": "clean",
+      "label": "clean",
+      "style": "studio"
+    },
+    {
+      "id": "h08",
+      "kind": "missing",
+      "label": "defect",
+      "style": "paper"
+    },
+    {
+      "id": "h09",
+      "kind": "clean",
+      "label": "clean",
+      "style": "paper"
+    },
+    {
+      "id": "h10",
+      "kind": "clean",
+      "label": "clean",
+      "style": "paper"
+    },
+    {
+      "id": "h11",
+      "kind": "clean",
+      "label": "clean",
+      "style": "paper"
+    },
+    {
+      "id": "h12",
+      "kind": "tiny",
+      "label": "defect",
+      "style": "paper"
+    },
+    {
+      "id": "h13",
+      "kind": "overlap",
+      "label": "defect",
+      "style": "paper"
+    },
+    {
+      "id": "h14",
+      "kind": "clipped",
+      "label": "defect",
+      "style": "paper"
+    },
+    {
+      "id": "h15",
+      "kind": "clean",
+      "label": "clean",
+      "style": "paper"
+    },
+    {
+      "id": "h16",
+      "kind": "missing",
+      "label": "defect",
+      "style": "chart"
+    },
+    {
+      "id": "h17",
+      "kind": "clipped",
+      "label": "defect",
+      "style": "chart"
+    },
+    {
+      "id": "h18",
+      "kind": "clean",
+      "label": "clean",
+      "style": "chart"
+    },
+    {
+      "id": "h19",
+      "kind": "tiny",
+      "label": "defect",
+      "style": "chart"
+    },
+    {
+      "id": "h20",
+      "kind": "clean",
+      "label": "clean",
+      "style": "chart"
+    },
+    {
+      "id": "h21",
+      "kind": "overlap",
+      "label": "defect",
+      "style": "chart"
+    },
+    {
+      "id": "h22",
+      "kind": "clean",
+      "label": "clean",
+      "style": "chart"
+    },
+    {
+      "id": "h23",
+      "kind": "clean",
+      "label": "clean",
+      "style": "chart"
+    },
+    {
+      "id": "h24",
+      "kind": "tiny",
+      "label": "defect",
+      "style": "split"
+    },
+    {
+      "id": "h25",
+      "kind": "clean",
+      "label": "clean",
+      "style": "split"
+    },
+    {
+      "id": "h26",
+      "kind": "clean",
+      "label": "clean",
+      "style": "split"
+    },
+    {
+      "id": "h27",
+      "kind": "overlap",
+      "label": "defect",
+      "style": "split"
+    },
+    {
+      "id": "h28",
+      "kind": "clipped",
+      "label": "defect",
+      "style": "split"
+    },
+    {
+      "id": "h29",
+      "kind": "clean",
+      "label": "clean",
+      "style": "split"
+    },
+    {
+      "id": "h30",
+      "kind": "missing",
+      "label": "defect",
+      "style": "split"
+    },
+    {
+      "id": "h31",
+      "kind": "clean",
+      "label": "clean",
+      "style": "split"
+    },
+    {
+      "id": "h32",
+      "kind": "intentional_blank",
+      "label": "clean",
+      "style": "blank"
+    }
+  ],
+  "jobs": [
+    "studio.json",
+    "paper.json",
+    "chart.json",
+    "split.json",
+    "blank.json"
+  ],
+  "source_sha256": "f0125b3c4524fbcb8b9fa2c93926d7a8d0cec90bf9cf481e505a8fff7d24364d",
+  "frames": 33,
+  "duration": 16.5,
+  "fps": 2
+}

@@ -1,0 +1,10 @@
+{
+  "local_homes": 40,
+  "actual_both_skill_loaders_passed": 40,
+  "unchanged_config_hashes": 40,
+  "implementation_commit": "dea54a7285501319c8e5a5b4123bb96ee47b9060",
+  "shared_workflow_commit": "e00be75bbe189fba805055eed2caad7431a591aa",
+  "root_general_cloud_vision": "off",
+  "owned_resource_leases_remaining": 0,
+  "scope": "Explicit local homes only; remote machines and in-flight prompts not claimed updated"
+}

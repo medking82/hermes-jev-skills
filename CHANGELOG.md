@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+- Add the fork's Codex-only unified `$jev` entrypoint, bounded `UserPromptSubmit`
+  skill selection, speculative design-mode routing, exact-turn deduplication and
+  prompt-free receipts. Preserve explicit models, tools and scope. Archive/disable
+  all standalone Codex `jev-*` skills with recoverable runtime backups; preserve
+  upstream workflows as references. Add offline behavior/installer regressions and
+  a test-gated upstream integration workflow. Existing Hermes behavior is unchanged.
+
+- Integrate PR #49 (thanks @mxuanvan02) with explicit-effort preservation, disabled-reasoning and follow-up telemetry regressions. Retain the contributor commit in merge history; preserve manual `reasoning.effort` rather than replacing it. Include the numeric unknown-cost row count in daily stewardship summaries.
+
+- Add the tested opt-in bridge for existing daily stewardship collectors, separating root install identity from published main and exposing common-ledger estimates/unknowns. Counterbalance future A/B requests, while retaining the first exploratory run and its documented ordering deviation.
+
+- Qualify the synthetic question A/B collector under a scoped paid ceiling, retain unknown-outcome reservations and replay refusal, and record the exploratory 24-frame result with its arm-order limitation. Honor `retries=0` at the native pooled HTTP transport layer, including stale connections.
+
+- Correct Responses effort delivery without enabling disabled reasoning or overriding explicit/manual values; keep Chat Completions wire shape and accurate applied-effort notices, including follow-up requests. Incorporates the wire-format issue identified in PR #49 with additional boundary regressions. No routing or reasoning-mode activation.
+- Distinguish published main, dirty checkout, installed managed code/skills and unverified loaded runtime. Add a checked daily-steward adapter, external dependency fingerprints and metadata-only common-ledger aggregation; never overwrite an installed feature candidate merely to match main.
+- Meter standalone Blender/video/image-action helpers through hash-only durable write-ahead events with hidden retries disabled. Coalesce logical calls, retain unknown spend, close daily budgets on unknown usage and label rate/counterfactual estimates separately from invoices and realized savings.
+- Refresh workflow evidence, code-first and task-specific confidence guidance while preserving required GUI/browser choice and final verification. Prepare a fresh 24-frame synthetic question-design A/B fixture and strict offline scorer; no paid run, floor reduction, production-question replacement or automatic promotion.
+
+- Make video QA use a general local-first triage/review-planning default through `jev-video-qa`, with task-specific requirements, privacy-safe no-upload fallback, exact-frame deduplication, mandatory audits and low-coverage stop. Preserve the broader holdout’s two raw tiny-text misses and zero confident-clear coverage; do not claim general review-time savings. No blanket cloud-vision opt-in or automatic artifact acceptance.
+
+- Add an opt-in synthetic video-frame Jev QA trial and original encoded/decode fixture, consent/hash/path/replay safeguards, conservative review routing and offline boundary tests. Retain finite known-answer results and the same-set safety recheck with explicit cost/accuracy limits. No automatic frame clearance, private uploads, cloud vision opt-in, routing or gateway change.
+
+- Add the default `jev-blender` domain workflow, a closed-vocabulary code-first `jevkit.blender` decision boundary and `jev blender-next`. Mandatory local checks and artifact verification remain authoritative; optional one-second read-only Jev advice is limited to unclear expensive probes. Add offline boundary/CLI regressions. No model routing, credentials, image forwarding or gateway change.
+
+- Add an opt-in native image/action comparison fixture and reproducible measured receipts. Jev chooses prevalidated action IDs; installed Hermes modules and paired Co-Agent execute verified synthetic clicks and plaintext typing. Retain failed replacement and image-abstention runs; measure explicit element fallbacks without lowering confidence. Add seven offline safety/accounting tests. No default driver, cloud switch or gateway change.
+
 - Fix #48 (thanks @zimu002): remove the unsupported `provides_middleware` manifest declaration. Hermes v0.22.2 and current hosts register `llm_request` via `PluginContext.register_middleware` in plugin code; the declaration only produced a warning and never enabled the middleware. Add a regression preserving code registration and a warning-free manifest.
 
 ## 0.24.0 (2026-10-16)
@@ -69,7 +95,6 @@ Released by the daily Jev steward: 9 commit(s) on main since v0.22.2.
 ## 0.22.2 (2026-10-07)
 
 Released by the daily Jev steward: 5 commit(s) on main since v0.22.1.
-
 - Installer: preserve the canonical shared skill directory and aliases instead of replacing its source with self-referencing symlinks; regression tests cover both destructive edge cases.
 
 - **One copy of each skill on a machine**: once Hermes is installed, Claude Code, Codex and `~/.agents` skill folders get symlinks to `<hermes root>/skills/jev/<skill>` instead of their own copies, so all three read the same files; copies remain the fallback without Hermes or symlinks. Tests cover link, re-run and no-Hermes cases.

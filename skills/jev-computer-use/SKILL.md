@@ -235,6 +235,10 @@ The two-model split (a fast text model plans, Jev grounds every on-screen target
 
 `jevkit.local_goal` builds whole prevalidated action ids for a caller-owned local loop; it does not launch apps or replace the normal Co-Agent path. See the [local goal contract](https://github.com/kerpopule/hermes-jev-skills/blob/main/docs/local-goal.md) for the API, measured synthetic-browser results and remaining gates. Use only on explicitly authorized non-sensitive screens with exact target scope, freshness checks, action/deadline budgets and independent actual-effect verification. Its candidate descriptions include supplied non-sensitive bound text values, unlike this skill's label-only desktop path; sensitive/contact-shaped inputs and unknown/protected bound-field types are refused. No confidence floor is lowered, and neither a model DONE choice nor visible done text alone proves the requested outcome. Native and end-to-end qualification are separate from warm headless-engine timing.
 
+## Experimental image option
+
+For an explicitly authorized synthetic-screen evaluation, see `scripts/benchmark_image_actions.py` and `docs/image-action-demo.md`. Feed a bounded screenshot plus a caller-built action table to `client.ask(..., assets=...)`; Jev picks an ID, never executable coordinates, text or commands. Reobserve before acting and verify the actual effect. Do not turn the shadow-only cloud feature into an unconditional desktop controller. Keep the ordinary element route, stop on uncertainty, and measure any fallback cost rather than lowering a confidence floor. Screenshot forwarding needs permission for those exact images; a working image API is not permission to send private screens. The demo's typing gate covers empty synthetic fields, not reliable replacement of existing text.
+
 ## Managed fleets
 
 This skill is the *loop*. Machine-specific runtime — which driver binary to start, how it is

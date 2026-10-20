@@ -1,0 +1,197 @@
+{
+  "run": "fresh-state",
+  "status": "image-only-abstentions",
+  "syntheticOnly": true,
+  "rows": [
+    {
+      "route": "elements",
+      "round": 0,
+      "task": "workspace",
+      "decision_ms": 131.05,
+      "choice": "rocket",
+      "confidence": 1.0,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 0,
+      "task": "type",
+      "decision_ms": 74.54,
+      "choice": "note",
+      "confidence": 0.88,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 0,
+      "task": "preview",
+      "decision_ms": 104.29,
+      "choice": "preview",
+      "confidence": 0.99,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 0,
+      "task": "workspace",
+      "decision_ms": 173.14,
+      "choice": "rocket",
+      "confidence": 0.69,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 0,
+      "task": "type",
+      "decision_ms": 139.22,
+      "choice": "note",
+      "confidence": 0.99,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 0,
+      "task": "preview",
+      "decision_ms": 176.66,
+      "choice": "preview",
+      "confidence": 0.33,
+      "model": "jev-1.14.0",
+      "verified": false
+    },
+    {
+      "route": "image",
+      "round": 1,
+      "task": "workspace",
+      "decision_ms": 176.24,
+      "choice": "rocket",
+      "confidence": 0.68,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 1,
+      "task": "type",
+      "decision_ms": 129.22,
+      "choice": "note",
+      "confidence": 0.99,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 1,
+      "task": "preview",
+      "decision_ms": 122.99,
+      "choice": "preview",
+      "confidence": 0.67,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 1,
+      "task": "workspace",
+      "decision_ms": 99.05,
+      "choice": "rocket",
+      "confidence": 1.0,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 1,
+      "task": "type",
+      "decision_ms": 74.77,
+      "choice": "note",
+      "confidence": 0.85,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 1,
+      "task": "preview",
+      "decision_ms": 64.94,
+      "choice": "preview",
+      "confidence": 0.99,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 2,
+      "task": "workspace",
+      "decision_ms": 66.23,
+      "choice": "rocket",
+      "confidence": 1.0,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 2,
+      "task": "type",
+      "decision_ms": 76.02,
+      "choice": "note",
+      "confidence": 0.88,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "elements",
+      "round": 2,
+      "task": "preview",
+      "decision_ms": 129.03,
+      "choice": "preview",
+      "confidence": 0.96,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 2,
+      "task": "workspace",
+      "decision_ms": 120.39,
+      "choice": "rocket",
+      "confidence": 0.73,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 2,
+      "task": "type",
+      "decision_ms": 174.64,
+      "choice": "note",
+      "confidence": 0.99,
+      "model": "jev-1.14.0",
+      "verified": true
+    },
+    {
+      "route": "image",
+      "round": 2,
+      "task": "preview",
+      "decision_ms": 187.86,
+      "choice": "preview",
+      "confidence": 0.53,
+      "model": "jev-1.14.0",
+      "verified": false
+    },
+    {
+      "route": "image",
+      "round": 3,
+      "task": "visual",
+      "decision_ms": 196.5,
+      "choice": "B",
+      "confidence": 0.99,
+      "model": "jev-1.14.0",
+      "verified": true
+    }
+  ]
+}

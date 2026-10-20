@@ -263,6 +263,17 @@ def cmd_choose(args: argparse.Namespace) -> int:
         raise SystemExit(f"invalid request: {error}") from None
 
 
+def cmd_blender_next(args: argparse.Namespace) -> int:
+    from . import blender
+    try:
+        raw = sys.stdin.read(16000)
+        return _out(blender.select(json.loads(raw), timeout=args.timeout))
+    except (ValueError, TypeError):
+        # Do not echo rejected source content, paths, or field values.
+        print(json.dumps({'error': 'invalid_blender_state'}))
+        return 2
+
+
 def cmd_search(args: argparse.Namespace) -> int:
     """One round of the search loop: which results to read, whether that is enough, what next.
 
@@ -786,6 +797,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("choose", help="pick the next GUI or browser action from a candidate table")
     p.add_argument("--mock", action="store_true")
     p.set_defaults(func=cmd_choose)
+
+    p = sub.add_parser("blender-next", help="Blender code-first verification gate with bounded optional Jev probe advice")
+    p.add_argument("--timeout", type=float, default=1.0)
+    p.set_defaults(func=cmd_blender_next)
 
     p = sub.add_parser("search", help="one round of a search: which results to read, whether that is enough, which query next")
     p.add_argument("--round", type=int, default=1, help="which round this is, 1-based")

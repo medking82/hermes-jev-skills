@@ -1,0 +1,19 @@
+# Design Routing
+
+`design` selects among the existing `$design` mode guides. It does not design a UI,
+choose arbitrary dependencies, add review phases or run the browser.
+
+Input: `{"turn":"Fix sticky hover and safe-area behavior on mobile web"}`.
+Output: `{"status":"ok","mode":"mobile-native","source":"jev",...}`.
+On uncertainty or failure use the main model's judgment, with general component polish
+(`emil-design-eng`) as the existing design default. The 0.5 confidence floor is a
+starting policy, not a calibrated accuracy guarantee for this user's CJK requests.
+
+The default candidate set excludes `prototype`, `pick-ui-library`, `review-animations`
+and `break-ui`. Add an explicit mode in `allowed_modes` only when the actual request
+authorizes it. The allowed set must also retain all other relevant regular modes;
+the helper always includes the general default. A Jev result cannot authorize those modes.
+
+If a hook already returned `design.mode`, read that guide directly. Otherwise use
+the helper only when two or more modes plausibly fit. Preserve the user's existing
+UI copy preference, framework, tokens and dependencies.

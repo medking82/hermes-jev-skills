@@ -12,7 +12,7 @@ import os
 import re
 from typing import Any, Dict, List, Mapping, Optional
 
-from . import client, privacy
+from . import client, privacy, usage
 
 REQUEST_SCHEMA = "jev.action_choice_request_v1"
 RESPONSE_SCHEMA = "jev.action_choice_v1"
@@ -126,7 +126,7 @@ def validate(request: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def choose(request: Mapping[str, Any], *, timeout: float = 3.0, mock: bool = False,
-           transport: Optional[client.Transport] = None) -> Dict[str, Any]:
+           transport: Optional[client.Transport] = None, usage_feature: Optional[str] = None) -> Dict[str, Any]:
     """Raises ValueError for a bad request. A Jev failure returns ``reobserve``, never a guess."""
     valid = validate(request)
     table = valid["table"]
@@ -140,7 +140,10 @@ def choose(request: Mapping[str, Any], *, timeout: float = 3.0, mock: bool = Fal
     state = {"goal": valid["goal"], "on_screen": valid["regions"], "already_tried": valid["history"]}
     question = client.choice("Which single action should be taken next to move toward the goal?", table)
     try:
-        reply = client.ask(state, {"next_action": question}, timeout=timeout, transport=transport)
+        if usage_feature is None:
+            reply = client.ask(state, {"next_action": question}, timeout=timeout, transport=transport)
+        else:
+            reply = usage.ask(usage_feature, state, {"next_action": question}, timeout=timeout, transport=transport, retries=0)
     except client.JevError as error:
         return answer("reobserve", 0.0, f"Jev unavailable ({error.code})")
     picked = reply["answers"]["next_action"]

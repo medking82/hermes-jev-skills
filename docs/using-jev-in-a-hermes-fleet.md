@@ -6,20 +6,27 @@ This is that posture, and it is portable: nothing here names a machine, a path o
 
 ## The standing principle
 
-**Hand Jev the picks, the rankings and the gates.** The less an agent does itself, the better it
-is, and every decision a text model re-decides by hand is a decision it is paying frontier tokens
-to guess at.
+**Code owns deterministic checks; Jev handles useful ambiguity.** Run known, inexpensive
+rules locally. Use a bounded Jev choice, ranking or rubric when unresolved ambiguity warrants
+its measured cost. The caller still authors plans, owns permissions and verifies artifacts.
+More inference is not inherently better or cheaper.
 
-Jev never writes. Any change that ends with Jev producing text, a command, a coordinate or an
-argument that gets executed is a change in the wrong direction, because the whole guarantee is
-that Jev chooses from a closed set that code built.
+Jev never writes executable authority. Closed-choice features accept only caller-owned IDs.
+Experimental image localization can return untrusted geometry, but only a separately qualified,
+explicitly opted-in executor may validate and use it. Bounds, target identity, permission,
+confidence and independent verification still apply; it is not a default screenshot driver.
+Neither a choice nor a coordinate authorizes spending, publication or protected actions.
 
 ## Never bypass Jev
 
-The rule is not "prefer Jev". It is: **in work where a step gets chosen, the step is a Jev choice
-or the run stops.** In GUI and browser work that means every action comes from the agent's own
-table of prevalidated actions, and a run that cannot get a choice reports the blocker instead of
-picking one itself.
+**Never bypass Jev for a GUI/browser action assigned to its chooser.** Each action comes
+from the caller's current table of prevalidated operations. Unknown IDs, stale targets or
+inadequate confidence mean reobserve, a specifically qualified fallback or stop, not an
+improvised click. Preserve a fleet's existing mandatory chooser rule.
+
+This does not assign deterministic preconditions, known-ahead builds or artifact verifiers to
+a model. Blender deliberately skips inference for routine checks. Such code-first decisions
+are compliant, not bypasses. Availability fallback must never become protected-action approval.
 
 Fail-open is not a bypass, and the difference matters:
 
@@ -30,8 +37,8 @@ Fail-open is not a bypass, and the difference matters:
   cover exactly the options offered, a chosen option that is not the maximum, a Score that disagrees
   with its own distribution — `client.ask` refuses these as `invalid_response` and the feature takes
   its fail-open path. The reply parses; the answer is what is unusable.
-- A bypass is the agent choosing something itself that Jev could have chosen. That is the thing
-  the rule forbids, and a fail-open path is never cover for it.
+- A bypass is improvising an action the applicable feature policy assigns to its chooser.
+  That is forbidden; a fail-open path is never cover for it. Explicit local pre-rules are different.
 
 A fleet that treats fail-open as "and then do whatever you like" has no rule at all.
 
@@ -55,16 +62,20 @@ without a row is the thing this whole arrangement exists to remove.
 
 ## Thresholds a fleet must not quietly change
 
-Every threshold assumes a real, calibrated probability:
+Preserve existing confidence floors. Confidence needs evidence for the specific model,
+question, state shape, domain and downstream outcome; installing Jev does not establish
+universal calibration. Freeze a new evaluation when a question or domain changes; do not
+lower a threshold to manufacture actions. Relevant floors include:
 
 - the floor before a GUI action,
 - the floor before a transcript turn may be dropped,
 - the routing floors on probability mass, and "unsure is not hard".
 
-**Substituting a model that reports its own confidence changes all of them at once, and nothing
-fails visibly** — the numbers still arrive, they are just no longer probabilities. If a feature
-needs a model that is not Jev, it belongs behind a different name and its own threshold, so the
-calibration of the Jev paths stays intact.
+Substituting a model that reports its own confidence, or changing a question, changes
+what those numbers mean even when the response
+still parses. A different model belongs behind its own named contract and qualification.
+Report unsafe clears, useful coverage, abstentions, clean referrals and actual executor
+outcomes separately. A model clear is not final acceptance or permission to expose private data.
 
 ## Rolling it out
 
@@ -76,6 +87,20 @@ calibration of the Jev paths stays intact.
    opted in or out without touching everyone else.
 4. **Bound by the clock, not the count.** A decision that has not answered in its budget is a
    fail-open, not a reason to wait longer.
+
+## Default workflow evidence and honest economics
+
+Use [the workflow evidence matrix](workflow-evidence.md): elements first on labelled UIs,
+code-first Blender, and guarded video triage with mandatory audits/full-review fallback.
+None of the small fixtures proves universal speed, artistic quality or security.
+
+[Measurement and provenance](measurement-and-provenance.md) separates published main,
+checkout, installed files and actually loaded code. A file install does not prove a running
+gateway reloaded. Separate decision-call latency from observation, execution, fallback,
+verification and full review. Shadow still runs the original path, so its avoided tokens are
+counterfactual estimates, not realized savings. List-rate estimates are not invoices; an
+unresolved attempt is unknown usage, not zero cost. No new mode, provider, handoff, screenshot
+upload or gateway restart is authorized merely by these portable instructions.
 
 ## Where the fleet's own facts live
 
@@ -96,4 +121,4 @@ wrong within a release, and a reader will not know which copy is authoritative.
 - which profiles are private, and therefore send coarse features only;
 - the escalation order for hard work, and where a refusal is recorded so other lanes skip that
   seat;
-- the one-line rule for the fleet's own agents: hand Jev the picks, the rankings and the gates.
+- the one-line rule for the fleet's own agents: local rules first, bounded Jev for useful ambiguity.

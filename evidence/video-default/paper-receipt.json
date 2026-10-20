@@ -1,0 +1,111 @@
+{
+  "mode": "default_triage",
+  "model": "jev-1.14.0",
+  "threshold": 0.9,
+  "final_acceptance": false,
+  "source_sha256": "f0125b3c4524fbcb8b9fa2c93926d7a8d0cec90bf9cf481e505a8fff7d24364d",
+  "requirements_sha256": "d82bafccd70da2057c24b79d4442e6da15d346ea857d8fb68b6b517b111b79d9",
+  "question_sha256": "231385a1c073b59fdf89f819ea4e9220346d9869eb23c51154d82f822727023d",
+  "frames": [
+    {
+      "id": "h08",
+      "decision": "review",
+      "reason": "model",
+      "choice": "flag",
+      "confidence": 1.0,
+      "input_tokens": 1580,
+      "wall_ms": 241.947,
+      "audit_required": false
+    },
+    {
+      "id": "h09",
+      "decision": "review",
+      "reason": "model",
+      "choice": "clear",
+      "confidence": 0.62,
+      "input_tokens": 1577,
+      "wall_ms": 255.651,
+      "audit_required": false
+    },
+    {
+      "id": "h10",
+      "decision": "review",
+      "reason": "model",
+      "choice": "clear",
+      "confidence": 0.61,
+      "input_tokens": 1582,
+      "wall_ms": 241.357,
+      "audit_required": false
+    },
+    {
+      "id": "h11",
+      "decision": "review",
+      "reason": "model",
+      "choice": "clear",
+      "confidence": 0.64,
+      "input_tokens": 1581,
+      "wall_ms": 102.068,
+      "audit_required": false
+    },
+    {
+      "id": "h12",
+      "decision": "review",
+      "reason": "model",
+      "choice": "flag",
+      "confidence": 0.51,
+      "input_tokens": 1580,
+      "wall_ms": 140.671,
+      "audit_required": false
+    },
+    {
+      "id": "h13",
+      "decision": "review",
+      "reason": "model",
+      "choice": "flag",
+      "confidence": 0.88,
+      "input_tokens": 1582,
+      "wall_ms": 97.737,
+      "audit_required": false
+    },
+    {
+      "id": "h14",
+      "decision": "review",
+      "reason": "model",
+      "choice": "flag",
+      "confidence": 1.0,
+      "input_tokens": 1578,
+      "wall_ms": 117.425,
+      "audit_required": false
+    },
+    {
+      "id": "h15",
+      "decision": "review",
+      "reason": "model",
+      "choice": "clear",
+      "confidence": 0.61,
+      "input_tokens": 1576,
+      "wall_ms": 305.875,
+      "audit_required": false
+    }
+  ],
+  "model_calls": 8,
+  "input_tokens": 12636,
+  "errors": 0,
+  "estimated_list_usd": null,
+  "estimate_basis": "Configured list rate, not an invoice",
+  "wall_seconds": 1.506,
+  "review_ids": [
+    "h08",
+    "h09",
+    "h10",
+    "h11",
+    "h12",
+    "h13",
+    "h14",
+    "h15"
+  ],
+  "audit_ids": [],
+  "screening_complete": true,
+  "job_sha256": "5575e8b3bff50498ae1598d57e947766990ba3746f5f76222883a3fa2d4f69a3",
+  "implementation_sha256": "33af2e4377ce7a50eb89e85a3d1fd84e89fd4802b5e3b1ebde817b2efdea8360"
+}

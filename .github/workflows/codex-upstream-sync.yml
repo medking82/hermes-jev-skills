@@ -1,0 +1,64 @@
+name: Codex Upstream Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 2 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: codex-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    if: github.repository == 'medking82/hermes-jev-skills'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install pyyaml
+      - name: Merge Upstream Into The Integration Branch
+        id: merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add upstream https://github.com/kerpopule/hermes-jev-skills.git
+          git fetch upstream main
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git switch -c codex/upstream-sync
+          git merge --no-edit upstream/main
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+      - name: Validate Toolkit And Codex Integration
+        if: steps.merge.outputs.changed == 'true'
+        run: |
+          python -B codex/check.py --full
+      - name: Publish An Integration PR
+        if: steps.merge.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          git fetch origin codex/upstream-sync:refs/remotes/origin/codex/upstream-sync || true
+          git push --force-with-lease origin HEAD:refs/heads/codex/upstream-sync
+          if ! gh pr view codex/upstream-sync --json number >/dev/null 2>&1; then
+            gh pr create --base main --head codex/upstream-sync \
+              --title 'Sync Upstream Jev With The Codex Adapter' \
+              --body-file codex/upstream-pr.md
+          fi

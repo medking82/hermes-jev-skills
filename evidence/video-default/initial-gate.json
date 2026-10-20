@@ -1,0 +1,7 @@
+{
+  "exit_code": 1,
+  "ran": 1562,
+  "skipped": 5,
+  "failure": "test_readme_skill_count_matches_shipped_files",
+  "repair": "Update the second README skill-count occurrence from twelve to thirteen; do not weaken test"
+}

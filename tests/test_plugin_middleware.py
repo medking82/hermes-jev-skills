@@ -251,6 +251,60 @@ class EffortMiddlewareTests(unittest.TestCase):
         result = self.turn(session="manual", request_extra={"reasoning_effort": "low"})
         self.assertEqual(result["request"]["reasoning_effort"], "low")
 
+    def codex_turn(self, session="responses", **extra):
+        plugin._on_pre_llm_call(session_id=session, turn_id="t1", user_message=HARD)
+        request = {"input": [{"role": "user", "content": HARD}], "model": DEFAULT}
+        request.update(extra)
+        return plugin._on_llm_request(request=request, session_id=session, turn_id="t1",
+                                      model=DEFAULT, provider="openrouter")
+
+    def test_responses_effort_uses_enabled_nested_object(self):
+        self.enable_for()
+        result = self.codex_turn(reasoning={"summary": "auto"})
+        self.assertNotIn("reasoning_effort", result["request"])
+        self.assertEqual(result["request"]["reasoning"], {"summary": "auto", "effort": "xhigh"})
+        self.assertEqual(plugin._TURNS["responses"]["effort"], "xhigh")
+
+    def test_responses_manual_effort_is_not_overwritten_or_claimed(self):
+        self.enable_for()
+        with mock.patch.object(plugin, "_log") as log:
+            result = self.codex_turn(reasoning={"effort": "medium", "summary": "auto"})
+        self.assertEqual(result["request"]["reasoning"], {"effort": "medium", "summary": "auto"})
+        self.assertNotIn("reasoning_effort", result["request"])
+        self.assertNotIn("effort", plugin._TURNS["responses"])
+        self.assertFalse(any(c.args[0].get("kind") == "effort" for c in log.call_args_list))
+
+    def test_responses_disabled_reasoning_has_no_effort_telemetry_or_notice(self):
+        self.enable_for()
+        for i, value in enumerate([None, False, "disabled"]):
+            session = "disabled-" + str(i)
+            with mock.patch.object(plugin, "_log") as log:
+                result = self.codex_turn(session=session, reasoning=value)
+            self.assertIs(result["request"]["reasoning"], value)
+            self.assertNotIn("reasoning_effort", result["request"])
+            self.assertNotIn("effort", plugin._TURNS[session])
+            self.assertFalse(any(c.args[0].get("kind") == "effort" for c in log.call_args_list))
+            with mock.patch.object(plugin, "_setting", lambda name, default: "on"):
+                notice = plugin._on_transform_output(response_text="reply", session_id=session)
+            self.assertNotIn("effort xhigh", notice or "")
+        result = self.codex_turn(session="absent")
+        self.assertNotIn("reasoning_effort", result["request"])
+        self.assertNotIn("reasoning", result["request"])
+        self.assertNotIn("effort", plugin._TURNS["absent"])
+
+    def test_effort_helper_preserves_manual_and_disabled_responses(self):
+        for request in [{"input": []}, {"input": [], "reasoning": None},
+                        {"input": [], "reasoning": {"effort": "low"}}]:
+            self.assertEqual(plugin._with_effort(request, "xhigh"), request)
+
+    def test_followup_disabled_request_does_not_reuse_effort_notice(self):
+        self.enable_for()
+        self.codex_turn(reasoning={"summary": "auto"})
+        result = plugin._on_llm_request(request={"input": [], "model": DEFAULT},
+            session_id="responses", turn_id="t1", model=DEFAULT, provider="openrouter")
+        self.assertNotIn("reasoning_effort", result["request"])
+        self.assertNotIn("effort", plugin._TURNS["responses"])
+
     def test_shadow_and_off_do_not_mutate(self):
         self.enable_for()
         with mock.patch.object(plugin, "_setting",

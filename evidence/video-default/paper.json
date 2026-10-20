@@ -1,0 +1,94 @@
+{
+  "schema": "jev.video_qa_v1",
+  "cloud_policy": "authorized_synthetic",
+  "review_risk": "routine",
+  "source_sha256": "f0125b3c4524fbcb8b9fa2c93926d7a8d0cec90bf9cf481e505a8fff7d24364d",
+  "local_checks": {
+    "decode": "pass",
+    "geometry": "pass",
+    "duration": "pass",
+    "cadence": "pass",
+    "audio": "not_applicable"
+  },
+  "requirements": {
+    "required_text": [
+      "A better workflow",
+      "Continue"
+    ],
+    "required_elements": [
+      "a button labelled Continue"
+    ],
+    "palette": [
+      "#d54255",
+      "#f8f1e7"
+    ],
+    "allow_blank": false,
+    "allow_overlap": false
+  },
+  "frames": [
+    {
+      "id": "h08",
+      "image": "frames/008.png",
+      "sha256": "9263a495263d6d6bc1d2f84250fbf34ed71a3a8e5afe03c77145692162076ba0",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h09",
+      "image": "frames/009.png",
+      "sha256": "c415b9ec26a062c43a754818e18241fc002eaae7751be132988f17fb0567da8f",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h10",
+      "image": "frames/010.png",
+      "sha256": "62aa464fa40e15f12be94bca49adf7910cb71fd1d2c21f8561e36120cbc760a0",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h11",
+      "image": "frames/011.png",
+      "sha256": "a0b93065650035343cf2cd951d4ef95c160d7922f7bddc91dc5e7d5abbb0db58",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h12",
+      "image": "frames/012.png",
+      "sha256": "4ae4542e29c85ffb39e97d994de176524cc452317da7d9ce71668d0bf29c70d4",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h13",
+      "image": "frames/013.png",
+      "sha256": "671c3f1d42049c46929c6b1b13de19483033bc7a935792e0f10e445b9dc6fcbb",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h14",
+      "image": "frames/014.png",
+      "sha256": "6c61af94aa7de7786dc34153cc05bd64fb3a59de47cb1eaeff0069ff97419e10",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    },
+    {
+      "id": "h15",
+      "image": "frames/015.png",
+      "sha256": "ef6a47371d7413a1b6baa0d2ed0eea02db36ed25d4b217f6f6d2a9334945dc51",
+      "local": "pass",
+      "scene": "paper",
+      "transition": false
+    }
+  ]
+}

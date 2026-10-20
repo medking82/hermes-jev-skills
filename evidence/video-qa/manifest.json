@@ -1,0 +1,182 @@
+{
+  "synthetic": true,
+  "generator": "video_qa_fixture.py v1",
+  "rows": [
+    {
+      "id": "f00",
+      "image": "frames/000.png",
+      "label": "defect",
+      "defect_case": "clipped",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "ddc526a57b03eb5b1a1c97eb5082f179aee7f82d56287d777b9e49161cba634b"
+    },
+    {
+      "id": "f01",
+      "image": "frames/001.png",
+      "label": "clean",
+      "defect_case": "clean",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "19c6e32c5df89b9f4ed2f926dac72a955331ecc69c05a2c214fc4e7643c78c43"
+    },
+    {
+      "id": "f02",
+      "image": "frames/002.png",
+      "label": "defect",
+      "defect_case": "overlap",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "efb52da451c2b6f855e2be11e74ca202d5b6c2c07bc606b5fe2a2d6b54fcda9a"
+    },
+    {
+      "id": "f03",
+      "image": "frames/003.png",
+      "label": "defect",
+      "defect_case": "red",
+      "code_flag": true,
+      "code_reasons": [
+        "red_palette"
+      ],
+      "sha256": "c19d521ce50f74efb7736c5675547c733703b7213fe6cbbdf366216cbfa0943b"
+    },
+    {
+      "id": "f04",
+      "image": "frames/004.png",
+      "label": "defect",
+      "defect_case": "missing",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "b86be0be217636fd7bb46ddc092ddf81edf6e950bb09710ef09b97772c215ec1"
+    },
+    {
+      "id": "f05",
+      "image": "frames/005.png",
+      "label": "defect",
+      "defect_case": "tiny",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "794037a569720f2d54ce7cebb078bf91c31f68cd04cfc92345c11df07f94f230"
+    },
+    {
+      "id": "f06",
+      "image": "frames/006.png",
+      "label": "defect",
+      "defect_case": "overlap",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "31e4e0b71081d59ace2bb4eda59c654fca51d99c4fc7657a4c996ccb2106422c"
+    },
+    {
+      "id": "f07",
+      "image": "frames/007.png",
+      "label": "defect",
+      "defect_case": "tiny",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "aa8dd57ec3e80af5e893586e3cd78e3e53e77ec11d7ea7c8c16985fc1cc96e16"
+    },
+    {
+      "id": "f08",
+      "image": "frames/008.png",
+      "label": "clean",
+      "defect_case": "clean",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "4b3128b925d14a350ba236d4c0b8a53c9c4b6b7554bfa1e418e2b03489401a1f"
+    },
+    {
+      "id": "f09",
+      "image": "frames/009.png",
+      "label": "clean",
+      "defect_case": "clean",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "2fd42addd1ee81e9052cd5aad58cea7c5eb49c7bc2dafab07f9a275d93d6eeed"
+    },
+    {
+      "id": "f10",
+      "image": "frames/010.png",
+      "label": "clean",
+      "defect_case": "clean",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "5700724e2b9f49a6817111de1f9b7612b19eca88ad3661172d014c2b11bbc88f"
+    },
+    {
+      "id": "f11",
+      "image": "frames/011.png",
+      "label": "defect",
+      "defect_case": "blank",
+      "code_flag": true,
+      "code_reasons": [
+        "blank"
+      ],
+      "sha256": "d6d71c0f18d450028a8af6eec166e79c6f02ac9857a249fd307dffb4a2b6accd"
+    },
+    {
+      "id": "f12",
+      "image": "frames/012.png",
+      "label": "clean",
+      "defect_case": "clean",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "505bfc2d044ec60eb178dda6f9a0f9a2bce78f877e400bfb7266de635343abd2"
+    },
+    {
+      "id": "f13",
+      "image": "frames/013.png",
+      "label": "defect",
+      "defect_case": "clipped",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "be38edc96c7905db468856258f15b52a29fbe5b4054be1a2629c04341110c866"
+    },
+    {
+      "id": "f14",
+      "image": "frames/014.png",
+      "label": "defect",
+      "defect_case": "missing",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "7a6506701509b719b32621e2d83491870343621beaf33264336efd31862a679c"
+    },
+    {
+      "id": "f15",
+      "image": "frames/015.png",
+      "label": "defect",
+      "defect_case": "blank",
+      "code_flag": true,
+      "code_reasons": [
+        "blank"
+      ],
+      "sha256": "7d1e432fac839632d7184296aa03e5790a005f1368d89a9b9d7655007e5907d0"
+    },
+    {
+      "id": "f16",
+      "image": "frames/016.png",
+      "label": "clean",
+      "defect_case": "clean",
+      "code_flag": false,
+      "code_reasons": [],
+      "sha256": "c1d4eb07bdd9d25a1f3ffd1e832add064b161f4314711fdac504138ebf9ffdcf"
+    },
+    {
+      "id": "f17",
+      "image": "frames/017.png",
+      "label": "defect",
+      "defect_case": "red",
+      "code_flag": true,
+      "code_reasons": [
+        "red_palette"
+      ],
+      "sha256": "bb187106eb072cbdcdf36c99a44519d6154843013d849219246dc6b5937af8b9"
+    }
+  ],
+  "fixture_video_sha256": "b5e99c8380fcbb9cb3903e2a9a66071aa1aa489a707bfc225f3628a55459b219",
+  "code_measurement_seconds": 0.096691,
+  "frame_rate": "2",
+  "frames": 18,
+  "intentional_still_frames": true,
+  "limits": "Labels and names stay local. Per-frame semantic test; no temporal quality claim."
+}

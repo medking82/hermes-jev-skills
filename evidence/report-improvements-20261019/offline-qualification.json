@@ -1,0 +1,22 @@
+{
+  "tested_at": "2026-10-19T18:05:20.604985+00:00",
+  "tests_run": 1600,
+  "skipped": 5,
+  "status": "OK",
+  "seconds": 43.76,
+  "python": "Python 3.14.8",
+  "test_log_sha256": "3bc981cd7a5583bb24df8bb6853b89db1043ab602e0e75e4ebcfc5b3b77ecbdd",
+  "fresh_ab_frames": 24,
+  "ab_inference_calls": 0,
+  "ab_manifest_sha256": "f9522ccb608a6b0e588ceed37545f8124d752755431685ff1ea560694679cdbe",
+  "ab_questions": {
+    "A": "08a6f2c023badb3d78313478714a45c59dd54cc34902ac5691c5f68361bcdf83",
+    "B": "28c765f067674f9c43ce427ec110347229c672009f2a6ab15f6e43f2e9f36def"
+  },
+  "review": "Self-review plus offline QA, not independent review",
+  "remaining": [
+    "Paid A/B needs approved numeric cap and authorized live executor",
+    "Protected AGENTS.md wording edit not approved; file unchanged"
+  ],
+  "rollout": "Separate private install/config/provenance receipts; not a running-gateway attestation"
+}

@@ -1,0 +1,18 @@
+{
+  "readiness": {
+    "model": "jev-1.14.0",
+    "input_tokens": 1146,
+    "latency_ms": 202,
+    "checks_passed": true
+  },
+  "initial_runner_sha256": "180ce10c73fb4b92344a02554dfbd8ab89e50239a52ea8ef0452dae4a8a83e10",
+  "guarded_runner_sha256": "e67b667092a29bcc86df1c18bcd40371a8d1c675ada2f40831d34ebcfa19762b",
+  "live_calls_including_readiness": 37,
+  "live_input_tokens_including_readiness": 40956,
+  "configured_list_price_estimate_usd": 0.00172015,
+  "notes": [
+    "Readiness numbers transcribed from the actual readiness command output.",
+    "Repeated same-set safety recheck, not an independent accuracy experiment.",
+    "Initial and guarded prompts and manifest hashes are identical."
+  ]
+}

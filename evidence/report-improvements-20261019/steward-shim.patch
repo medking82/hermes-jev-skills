@@ -1,0 +1,9 @@
+--- a/steward_collect.py
++++ b/steward_collect.py
+@@ -461,2 +461,6 @@
+ if __name__ == "__main__":
++    # Tested reporting/provenance logic lives in the canonical Jev repository.
++    sys.path.insert(0, str(REPO))
++    from jevkit.steward import wire_existing
++    wire_existing(sys.modules[__name__])
+     raise SystemExit(main())
