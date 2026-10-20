@@ -19,6 +19,17 @@ require review again. Do not fabricate trust hashes or bypass trust. Restart or 
 Codex when required by the host. `scripts/jev.py status` shows only actual recorded
 hook work; a manual replay is not host-activation evidence.
 
+For an already loaded Desktop chat, persisted trust alone is insufficient when it was
+written by a different CLI/app-server process. Reload through the current Desktop's
+Hooks settings, or send `config/batchWrite` with `{"edits":[],"reloadUserConfig":true}`
+over that Desktop's own existing app-server connection. The request refreshes that
+process's loaded threads; starting another app-server cannot refresh them. Do not change
+the selected model, effort, service tier or permissions to activate a hook.
+
+Verify a fresh receipt against the current chat's `CODEX_THREAD_ID`, turn ID and timestamp.
+Keep a new-host test separate from an existing-Desktop test. An async reply/steer inside
+an active turn does not establish a new `UserPromptSubmit` event.
+
 Persistent hook receipts/caches keep only metadata and a per-turn fingerprint/result,
 without raw prompts, credentials, transcripts or retrieved content. Windows briefly
 spools non-sensitive stdin for the shared hidden runner and deletes it in `finally`.

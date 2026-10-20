@@ -26,6 +26,20 @@ Review/trust the new hook once in Codex `/hooks`. Do not bypass the trust review
 manufacture stored approval hashes. New or changed hook definitions require review.
 Source publication and a manual hook replay do not establish host activation.
 
+An already loaded Desktop session also needs its own app-server to reload the runtime
+configuration. Trust written through a separate CLI/app-server process is persisted but
+does not notify that Desktop session. Use the current Desktop's Hooks settings to apply
+the reviewed hook there. A protocol client attached to the owning app-server can issue
+`config/batchWrite` with `{"edits":[],"reloadUserConfig":true}`; a separate app-server
+cannot refresh another process's loaded threads. This refresh preserves session model,
+provider, reasoning, service tier and permission selections while rebuilding hooks.
+See the [version-matched reload implementation](https://github.com/openai/codex/blob/4ebc485ca321243727539187169425fcf972f2c4/codex-rs/app-server/src/request_processors/config_processor.rs#L367).
+
+To verify an existing Desktop chat, match the receipt's `session_id` to that chat's
+`CODEX_THREAD_ID`, plus a fresh turn ID and timestamp. Passing in a new ephemeral host
+does not prove activation in an already loaded Desktop chat. An async reply or steering
+input inside an active turn is not a substitute for an independent `UserPromptSubmit`.
+
 ## Runtime
 
 `UserPromptSubmit` runs before the model. Its worker gets a hard 3.5-second deadline.
