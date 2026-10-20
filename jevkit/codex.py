@@ -18,9 +18,9 @@ try:
 except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit supports 3.9.
     tomllib = None
 
-from . import client, privacy, skillpick
+from . import client, codex_catalog, privacy, skillpick
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
     "animate": "Implement web motion and transitions",
@@ -368,6 +368,10 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
     started = time.monotonic()
     try:
         catalog = local_catalog(home, Path(event.get("cwd") or Path.cwd()))
+        config_file = home / "config.toml"
+        config = tomllib.loads(config_file.read_text(encoding="utf-8-sig")) if config_file.exists() else {}
+        plugins, catalog_source = codex_catalog.session_plugins(home, event, config)
+        catalog = normalize_catalog(catalog + plugins)
         fingerprint = hashlib.sha256(json.dumps([VERSION, turn, catalog], sort_keys=True).encode()).hexdigest()
         # Only duplicate delivery of this exact turn may reuse a result. No cross-turn cache.
         ids = [event.get("session_id"), event.get("turn_id")]
@@ -383,7 +387,9 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                 temporary.write_text(json.dumps({"fingerprint": fingerprint, "result": result}), encoding="utf-8")
                 os.replace(str(temporary), str(cache))
         receipt = {"status": result["status"], "source": result.get("source"),
-                   "reason_code": result.get("reason_code"), "catalog_scope": "local_scopes",
+                   "reason_code": result.get("reason_code"),
+                   "catalog_scope": "local_scopes+session_plugins" if plugins else "local_scopes",
+                   "catalog_source": catalog_source,
                    "skills": [s["name"] for s in result.get("skills", [])],
                    "workflow": result.get("workflow"),
                    "design": result.get("design"),

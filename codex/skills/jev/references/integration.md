@@ -9,10 +9,15 @@ paths in Codex config. Backups stay under Codex home; shared-scope copies use a 
 `retired/agents/` directory so matching names do not overwrite each other.
 
 `UserPromptSubmit` runs the selector before the main model. The hook recommends one
-local skill and can include a design mode from the same stage-one request. Upstream
-two-stage skill verification still decides whether any specialist is needed.
-Plugin metadata is supplied from the live session by `select` when needed; the hook
-does not scan unrelated plugin caches or claim it saw the session's full catalog.
+skill and can include a design mode from the same stage-one request. Upstream two-stage
+skill verification still decides whether any specialist is needed. Plugin candidates
+come from this session's host-supplied available-skills record in its native rollout,
+bound to the active session/turn/cwd. The hook never scans unrelated plugin caches.
+Current skill/plugin disables and explicit-only policies are checked again. Missing,
+foreign, unsupported or out-of-range session evidence leaves local routing available.
+Receipts report `catalog_source`, snapshot timestamp/hash and admitted namespaced plugin
+IDs, without raw prompts/transcript text. A session catalog is not evidence of external
+service authorization; main-model/tool access checks still apply.
 
 Review/trust the installed hook once using Codex `/hooks`; changed hook definitions
 require review again. Do not fabricate trust hashes or bypass trust. Restart or resume

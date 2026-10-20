@@ -51,10 +51,21 @@ For an ambiguous turn, the adapter reuses upstream two-stage skill selection;
 an independent design-mode question shares stage one's request. It injects a short
 advisory recommendation, never a tool call or a blocking decision.
 
-The hook catalog covers both user scopes above (including `.system`) and explicitly trusted
-project scopes. It honors exact disabled paths and explicit-only metadata. It deliberately
-does not rank unrelated plugin caches. For plugin selection, pass the host's current
-available-skills catalog to `select`; exact namespaced IDs and paths are retained.
+The hook catalog covers both user scopes above (including `.system`), explicitly trusted
+project scopes, and plugins in this session's host-supplied available-skills catalog.
+It reads only the matching session's native rollout, verifies the active turn/cwd, and
+accepts only complete developer `skills_instructions` records. User/tool text cannot
+supply a catalog. Exact namespaced IDs and versioned paths are retained; unrelated plugin
+caches are never inventoried. Current per-skill/plugin disables, missing versions, and
+explicit-only metadata remove candidates even if an older host snapshot listed them.
+
+Discovery supports Codex's UUIDv7/date-partitioned rollout layout, reads at most the last
+32 MiB, and records the catalog timestamp/hash and admitted plugin IDs in the receipt.
+If identity, format, or catalog evidence is unavailable, it falls back to local scopes.
+This is the latest catalog supplied to that session, not a separate host's plugin scan
+or a promise that an external service is connected. The main model still checks current
+tool access and authorization before using a recommended skill. An explicit `select`
+caller can also supply the current catalog directly.
 
 Discovery stops at skill entrypoints instead of walking resources, dependencies or
 embedded examples. Timeouts/catalog failures leave explicit, prompt-free reason codes.
