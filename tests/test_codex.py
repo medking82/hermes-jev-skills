@@ -1,5 +1,6 @@
 """Behavioral checks for routing, privacy, scope and host-independent failure paths."""
 import json
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 import subprocess
@@ -123,7 +124,95 @@ class CodexRoutingTests(unittest.TestCase):
 
     def test_design_single_candidate_is_deterministic(self):
         ask = Mock(side_effect=AssertionError("unexpected network"))
-        self.assertEqual(codex.design("Polish the form", allowed=["emil-design-eng"], ask_fn=ask)["source"], "local")
+        self.assertEqual(codex.design("Polish the form spacing", allowed=["emil-design-eng"], ask_fn=ask)["source"], "local")
+
+    def test_settled_design_cases_make_no_calls_in_both_entrypoints(self):
+        cases = [("Use animate mode.", "animate"), ("使用 mobile-native 模式。", "mobile-native"),
+                 ("animation-performance", "animation-performance"),
+                 ("Polish the form's spacing and button feedback.", "emil-design-eng"),
+                 ("Adjust the button spacing", "emil-design-eng"),
+                 ("调整表单间距和按钮反馈。", "emil-design-eng"),
+                 ("优化组件的间距与对比度", "emil-design-eng")]
+        ask = Mock(side_effect=AssertionError("unexpected network"))
+        for turn, mode in cases:
+            with self.subTest(turn=turn):
+                result = codex.select(turn, self.catalog, ask_fn=ask)
+                self.assertEqual(result["skills"], [self.catalog[0]])
+                self.assertEqual(result["design"]["mode"], mode)
+                self.assertEqual(result["requests"], 0)
+                result = codex.design(turn, ask_fn=ask)
+                self.assertEqual(result["mode"], mode)
+                self.assertEqual(result["requests"], 0)
+        ask.assert_not_called()
+
+    def test_explicit_modes_authorize_only_the_named_mode(self):
+        ask = Mock(side_effect=AssertionError("unexpected network"))
+        for mode in codex.DESIGN_MODES:
+            turn = "Use " + mode + " mode."
+            self.assertEqual(codex.design(turn, ask_fn=ask)["mode"], mode)
+            self.assertEqual(codex.select(turn, self.catalog, ask_fn=ask)["design"]["mode"], mode)
+            self.assertEqual(codex.design(turn, allowed=[mode], ask_fn=ask)["mode"], mode)
+            self.assertEqual(codex.select(turn, self.catalog, allowed_design_modes=[mode], ask_fn=ask)["design"]["mode"], mode)
+        ask.assert_not_called()
+
+    def test_unknown_mixed_conflicting_and_disallowed_cases_still_ask(self):
+        turns = ["Improve the interface", "Use animate and mobile-native modes",
+                 "Use animate mode, but do not use animate", "Do not use animate mode",
+                 "Polish the form spacing and fix the backend", "调整表单间距并修复后端",
+                 "调整表单间距和动画", "Use animate mode for an unknown mixed task",
+                 "Compare prototype and break-ui", "Use invented-mode mode",
+                 "$designanimate", "Use `animate mode", "Use animate` mode"]
+        for turn in turns:
+            with self.subTest(turn=turn):
+                ask = Mock(side_effect=client.JevError("offline"))
+                self.assertEqual(codex.design(turn, ask_fn=ask)["reason_code"], "offline")
+                self.assertEqual(codex.select(turn, self.catalog, ask_fn=ask)["reason_code"], "offline")
+                self.assertEqual(ask.call_count, 2)
+        # A caller-owned singleton is deterministic; skill selection still checks fit.
+        for mode in ("animate", "break-ui"):
+            ask = Mock(side_effect=client.JevError("offline"))
+            turn = "Use " + mode + " mode."
+            codex.design(turn, allowed=["emil-design-eng"], ask_fn=ask)
+            codex.select(turn, self.catalog, allowed_design_modes=["emil-design-eng"], ask_fn=ask)
+            self.assertEqual(ask.call_count, 1)
+        ask = Mock(side_effect=AssertionError("unexpected network"))
+        self.assertEqual(codex.design("Use animate and mobile-native modes", allowed=["emil-design-eng"], ask_fn=ask)["mode"], "emil-design-eng")
+        ask.assert_not_called()
+
+    def test_singleton_design_does_not_add_a_mode_question(self):
+        def ask(state, questions, **kwargs):
+            key = "mode" if "mode" in questions else "design_mode"
+            if key in questions:
+                self.fail("A singleton mode must be chosen in code")
+            if key == "mode":
+                return {"answers": {"mode": {"choice": "none", "confidence": .9}}}
+            reply = self.ask(state, questions, **kwargs)
+            reply["answers"]["design_mode"] = {"choice": "none", "confidence": .9}
+            return reply
+        result = codex.design("Improve the interface", allowed=["emil-design-eng"], ask_fn=ask)
+        self.assertEqual(result["source"], "local")
+        result = codex.select("Improve the interface", self.catalog, allowed_design_modes=["emil-design-eng"], ask_fn=ask)
+        self.assertEqual(result["design"]["source"], "local")
+
+    def test_local_design_requires_exact_catalog_row_and_preserves_explicit_skill(self):
+        ask = Mock(side_effect=client.JevError("offline"))
+        for rows in ([self.catalog[1]], [dict(self.catalog[0], name="plugin:design")]):
+            self.assertEqual(codex.select("Adjust the button spacing", rows, ask_fn=ask)["reason_code"], "offline")
+        self.assertEqual(ask.call_count, 2)
+        ask = Mock(side_effect=AssertionError("unexpected network"))
+        result = codex.select("Use $drive:documents; adjust the button spacing", self.catalog, ask_fn=ask)
+        self.assertEqual(result["skills"], [self.catalog[1]])
+        self.assertNotIn("design", result)
+        result = codex.select("Use $design: Use animate mode.", self.catalog, ask_fn=ask)
+        self.assertEqual(result["source"], "explicit")
+        self.assertEqual(result["design"]["mode"], "animate")
+        ask.assert_not_called()
+
+    def test_off_switch_suppresses_decision_before_payload_processing(self):
+        ask = Mock(side_effect=AssertionError("unexpected network"))
+        with patch.dict(os.environ, {"JEV_CODEX_OFF": "1"}):
+            self.assertEqual(codex.decision({}, ask_fn=ask)["reason_code"], "disabled_by_user")
+        ask.assert_not_called()
 
     def test_design_explicit_scope_is_caller_owned(self):
         def ask(state, questions, **kwargs):
@@ -176,6 +265,36 @@ class CodexHookTests(unittest.TestCase):
         codex.hook(self.event, home=self.home, selector=selector)
         saved = "".join(p.read_text(encoding="utf-8") for p in (self.home / "jev").rglob("*.json"))
         self.assertNotIn(self.event["prompt"], saved)
+
+    def test_receipts_correlate_normal_gated_and_failed_events_without_prompt(self):
+        selected = {"mode": "animate", "source": "local", "reason_code": "explicit_mode"}
+        selector = Mock(return_value={"status": "ok", "source": "local", "skills": [
+            {"name": "design", "path": str(self.skill)}], "design": selected})
+        before = datetime.now(timezone.utc)
+        context = codex.hook(self.event, home=self.home, selector=selector)
+        receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+        self.assertIn("Local routing suggests", context["hookSpecificOutput"]["additionalContext"])
+        self.assertEqual(receipt["design"], selected)
+        self.assertEqual(receipt["session_id"], self.event["session_id"])
+        self.assertEqual(receipt["turn_id"], self.event["turn_id"])
+        observed = datetime.fromisoformat(receipt["observed_at"])
+        self.assertEqual(observed.utcoffset().total_seconds(), 0)
+        self.assertLessEqual(before, observed)
+        self.assertLessEqual(observed, datetime.now(timezone.utc))
+        for prompt, marker in (("Native-only: fix the screen", "host_event"), ("thanks", "manual_smoke")):
+            event = dict(self.event, prompt=prompt, turn_id="gated", _jev_invocation=marker)
+            codex.hook(event, home=self.home, selector=selector)
+            receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+            self.assertEqual(receipt["turn_id"], "gated")
+            self.assertEqual(receipt["observation_source"], marker)
+            self.assertNotIn(prompt, json.dumps(receipt))
+        with patch("jevkit.codex.subprocess.run", side_effect=subprocess.TimeoutExpired("worker", .05)), patch("jevkit.codex.codex_home", return_value=self.home):
+            codex._bounded_hook(self.event, deadline=.05)
+        receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+        self.assertEqual(receipt["session_id"], self.event["session_id"])
+        self.assertEqual(receipt["turn_id"], self.event["turn_id"])
+        self.assertIn("observed_at", receipt)
+        self.assertNotIn(self.event["prompt"], json.dumps(receipt))
 
     def test_hook_failure_never_blocks_the_prompt(self):
         selector = Mock(return_value=codex.fallback("timeout"))

@@ -100,7 +100,10 @@ def handler(home: Path, python: Path) -> dict:
         if not pwsh or not (home / "bin/invoke-hidden.ps1").is_file():
             raise ValueError("PowerShell 7 and the workstation hidden runner are required")
         result["commandWindows"] = subprocess.list2cmdline([
-            pwsh, "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
+            # Codex evaluates this in the configured shell. A quoted absolute
+            # executable is a string expression in PowerShell, not an invocation.
+            # The checked executable name works in both PowerShell and cmd.exe.
+            Path(pwsh).name, "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
             "-File", str(home / "jev/run-hook.ps1")])
     return result
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -19,7 +20,7 @@ except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit s
 
 from . import client, privacy, skillpick
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
     "animate": "Implement web motion and transitions",
@@ -172,6 +173,37 @@ def _gate(turn: str) -> Optional[dict]:
     return None
 
 
+def _settled_design(turn: str, allowed=None) -> Optional[dict]:
+    """Recognize whole commands only; extra prose, negation or modes must use Jev.
+
+    A literal mode command authorizes that mode, including opt-in modes, unless
+    the caller restricts it. Polish accepts only component + visual-property lists.
+    This intentionally leaves most natural-language requests to the main path.
+    """
+    text = re.sub(r"^(?:use\s+)?\$design(?![\w-])\s*[:：]?\s*", "", turn.strip(), flags=re.I)
+    modes = _design_options(allowed)
+    mode_ids = "|".join(re.escape(name) for name in DESIGN_MODES)
+    command = re.fullmatch(
+        r"(?:(?:use|choose|select)\s+|(?:使用|选择)\s*)?(?P<quote>`?)(?P<mode>" + mode_ids +
+        r")(?P=quote)(?:\s+mode|\s*模式)?[.。]?", text, flags=re.I)
+    if command:
+        mode = command["mode"].lower()
+        if allowed is None or mode in modes:
+            return {"mode": mode, "source": "local", "reason_code": "explicit_mode"}
+        return None
+    component = r"(?:form|button|component|card|dialog)"
+    aspect = r"(?:spacing|padding|alignment|contrast|focus styles|button feedback)"
+    english = (r"(?:polish|adjust|improve|fix) (?:the )?" + component +
+               r"(?:['’]s)? " + aspect + r"(?: (?:and|&) " + aspect + r")*[.]?")
+    chinese_component = r"(?:表单|按钮|组件|卡片|对话框)"
+    chinese_aspect = r"(?:间距|内边距|对齐|对比度|焦点样式|按钮反馈)"
+    chinese = (r"(?:调整|优化|改善|润色)" + chinese_component + r"的?" + chinese_aspect +
+               r"(?:(?:和|与|、)" + chinese_aspect + r")*[。]?")
+    if re.fullmatch(english, text, flags=re.I) or re.fullmatch(chinese, text):
+        return {"mode": "emil-design-eng", "source": "local", "reason_code": "component_polish"}
+    return None
+
+
 def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) -> dict:
     """Reuse upstream two-stage verification, merging speculative design routing."""
     gated = _gate(turn)
@@ -182,7 +214,17 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
         return fallback("catalog_unavailable")
     explicit = _explicit(turn, catalog)
     if explicit:
-        return {"status": "ok", "source": "explicit", "skills": explicit, "requests": 0}
+        result = {"status": "ok", "source": "explicit", "skills": explicit, "requests": 0}
+        if len(explicit) == 1 and explicit[0]["name"] == "design":
+            settled = _settled_design(turn, allowed_design_modes)
+            if settled:
+                result["design"] = settled
+        return result
+    design_skill = next((s for s in catalog if s["name"] == "design"), None)
+    settled = _settled_design(turn, allowed_design_modes) if design_skill else None
+    if settled:
+        return {"status": "ok", "source": "local", "skills": [design_skill],
+                "design": settled, "requests": 0}
     ask = ask_fn or client.ask
     receipts = []
 
@@ -202,7 +244,7 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
     questions["workflow_needed"] = client.noul(
         "This request materially benefits from one of the listed Jev workflows rather than ordinary direct work")
     modes = _design_options(allowed_design_modes)
-    if any(s["name"] == "design" for s in catalog):
+    if any(s["name"] == "design" for s in catalog) and len(modes) > 1:
         questions["design_mode"] = client.choice(
             "Which listed design procedure best answers this request? Choose general component polish when no specialty is needed.", modes)
     try:
@@ -216,7 +258,8 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
                             for s in result.get("skills", []) if s["name"] in by_name]
         if any(s["name"] == "design" for s in result["skills"]):
             answer = reply["answers"].get("design_mode", {})
-            result["design"] = _design_result(answer, modes)
+            result["design"] = ({"mode": next(iter(modes)), "source": "local"}
+                                if len(modes) == 1 else _design_result(answer, modes))
         workflow = reply["answers"].get("workflow", {})
         if (workflow.get("choice") in WORKFLOWS and workflow.get("choice") != "none"
                 and workflow.get("confidence", 0) >= .6
@@ -250,9 +293,12 @@ def design(turn: str, *, allowed=None, ask_fn=None) -> dict:
     gated = _gate(turn)
     if gated:
         return dict(gated, mode="emil-design-eng")
+    settled = _settled_design(turn, allowed)
+    if settled:
+        return dict(settled, status="ok", requests=0)
     modes = _design_options(allowed)
     if len(modes) == 1:
-        return {"status": "ok", "mode": "emil-design-eng", "source": "local", "requests": 0}
+        return {"status": "ok", "mode": next(iter(modes)), "source": "local", "requests": 0}
     ask = ask_fn or client.ask
     try:
         reply = ask({"request": privacy.redact(turn, 2000)}, {"mode": client.choice(
@@ -265,6 +311,8 @@ def design(turn: str, *, allowed=None, ask_fn=None) -> dict:
 
 
 def decision(payload: dict, *, ask_fn=None) -> dict:
+    if os.environ.get("JEV_CODEX_OFF") == "1":
+        return fallback("disabled_by_user")
     state, options, question = (payload.get(k) for k in ("state", "options", "question"))
     if not isinstance(options, dict) or not 2 <= len(options) <= 120 or not isinstance(question, str):
         raise ValueError("decision needs a question and 2 to 120 caller-owned options")
@@ -295,7 +343,10 @@ def decision(payload: dict, *, ask_fn=None) -> dict:
 
 
 def _write_hook_receipt(home: Path, event: dict, receipt: dict) -> None:
-    receipt = dict(receipt, observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event")
+    receipt = dict(receipt, observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event",
+                   session_id=event.get("session_id") if isinstance(event.get("session_id"), str) else None,
+                   turn_id=event.get("turn_id") if isinstance(event.get("turn_id"), str) else None,
+                   observed_at=datetime.now(timezone.utc).isoformat())
     state = home / "jev"
     try:
         state.mkdir(parents=True, exist_ok=True)
@@ -335,6 +386,7 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                    "reason_code": result.get("reason_code"), "catalog_scope": "local_scopes",
                    "skills": [s["name"] for s in result.get("skills", [])],
                    "workflow": result.get("workflow"),
+                   "design": result.get("design"),
                    "ask_attempts": result.get("ask_attempts", 0), "receipts": result.get("receipts", []),
                    "duration_ms": int((time.monotonic() - started) * 1000)}
         _write_hook_receipt(home, event, receipt)
@@ -343,7 +395,8 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
         context = ""
         if result.get("skills"):
             skill = result["skills"][0]
-            context = "Jev suggests this skill reference: " + json.dumps({"name": skill["name"], "path": skill["path"]}) + ". "
+            prefix = "Jev suggests" if result.get("source") == "jev" else "Local routing suggests"
+            context = prefix + " this skill reference: " + json.dumps({"name": skill["name"], "path": skill["path"]}) + ". "
         umbrella = home / "skills/jev/SKILL.md"
         if result.get("workflow") and umbrella.is_file():
             context += "For Jev workflow " + result["workflow"] + ", read the relevant reference in " + json.dumps(str(umbrella)) + ". "

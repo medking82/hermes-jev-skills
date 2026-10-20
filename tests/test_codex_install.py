@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -132,6 +133,27 @@ class CodexInstallTests(unittest.TestCase):
         files = self.installer.package(self.repo)
         self.assertEqual([name for name in files if name.endswith("SKILL.md")], ["SKILL.md"])
         self.assertTrue(all("references/upstream/" + name + "/guide.md" in files for name in self.installer.LEGACY_SKILLS))
+
+    @unittest.skipUnless(os.name == "nt", "Windows command-shell boundary")
+    def test_windows_command_runs_through_cmd_and_powershell(self):
+        # Exercise the real launcher/parser with a transport-free child stub.
+        state = self.home / "jev"
+        state.mkdir()
+        (state / "run-hook.ps1").write_bytes(self.installer.launcher(Path(sys.executable)))
+        (self.home / "bin/invoke-hidden.ps1").write_text("[Console]::Out.WriteLine('{}')\n")
+        command = self.installer.handler(self.home, Path(sys.executable))["commandWindows"]
+        pwsh = self.installer.shutil.which("pwsh.exe")
+        invocations = [
+            '"' + os.environ["COMSPEC"] + '" /d /s /c "' + command + '"',
+            [pwsh, "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", command],
+        ]
+        for invocation in invocations:
+            run = subprocess.run(invocation, input='{"prompt":"thanks"}', capture_output=True,
+                                 text=True, encoding="utf-8", errors="replace", timeout=10,
+                                 creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout), {})
+            self.assertEqual(list((state / "inbox").iterdir()), [])
 
 
 if __name__ == "__main__":
