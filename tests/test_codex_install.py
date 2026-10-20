@@ -46,7 +46,7 @@ class CodexInstallTests(unittest.TestCase):
         self.assertIn(self.foreign, [h for g in hooks for h in g["hooks"]])
         config = self.installer.tomllib.loads((self.home / "config.toml").read_text())
         self.assertEqual(config["model"], "user-selected")
-        self.assertEqual(len(config["skills"]["config"]), 11)
+        self.assertEqual(len(config["skills"]["config"]), len(self.installer.LEGACY_SKILLS))
         self.assertTrue(all(s["enabled"] is False for s in config["skills"]["config"]))
         self.assertTrue((self.home / "tools/hermes-jev-skills/jevkit/codex.py").exists())
 
@@ -56,7 +56,7 @@ class CodexInstallTests(unittest.TestCase):
         hooks = json.loads((self.home / "hooks.json").read_text())["hooks"]["UserPromptSubmit"]
         self.assertEqual(sum(len(g["hooks"]) for g in hooks), 2)
         config = self.installer.tomllib.loads((self.home / "config.toml").read_text())
-        self.assertEqual(len(config["skills"]["config"]), 11)
+        self.assertEqual(len(config["skills"]["config"]), len(self.installer.LEGACY_SKILLS))
 
     def test_local_runtime_drift_is_not_overwritten(self):
         self.run_install(True)
@@ -65,6 +65,15 @@ class CodexInstallTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "local edits"):
             self.run_install(True)
         self.assertEqual(skill.read_text(), "local user edits\n")
+
+    def test_future_standalone_entrypoint_is_archived_and_disabled(self):
+        future = self.home / "skills/jev-future/SKILL.md"
+        future.parent.mkdir()
+        future.write_text("custom future entrypoint\n")
+        report = self.run_install(True)
+        self.assertIn("jev-future", report["retire"])
+        self.assertFalse(future.exists())
+        self.assertEqual((Path(report["backup"]) / "retired/jev-future/SKILL.md").read_text(), "custom future entrypoint\n")
 
     def test_failed_retirement_restores_runtime_and_config(self):
         original = (self.home / "config.toml").read_bytes()

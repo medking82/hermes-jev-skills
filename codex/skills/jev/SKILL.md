@@ -50,9 +50,12 @@ The CLI subcommands remain available through `scripts/jev.py <subcommand>`.
 | Social evidence needs relevance/sufficiency decisions | [Social Research](references/upstream/jev-social-research/guide.md) |
 | A hard delegated run needs decision monitoring | [Frontier Work](references/upstream/jev-frontier-work/guide.md) |
 | Jev fails or credentials need connection | [Setup](references/upstream/jev-setup/guide.md), `doctor`, `setup-key` |
+| Explicit Blender troubleshooting or video QA | [Blender](references/upstream/jev-blender/guide.md) or [Video QA](references/upstream/jev-video-qa/guide.md); preserve their opt-in boundaries |
 
 Upstream references also describe Hermes, Claude and macOS integrations. Those are
 platform-specific documentation, not Codex switches or authorization to launch apps.
+New upstream references appear in `references/upstream/index.json`; read one only when
+it applies to the request. Their presence enables no new models, workers or services.
 Keep the requested browser and driver, and honor all tool bans. The selector's local
 catalog covers enabled user and trusted project scopes; it cannot certify the current
 session's plugin availability. The host's available-skills catalog takes precedence.

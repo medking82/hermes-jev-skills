@@ -12,3 +12,4 @@ state.json
 !evals/gate/fixtures.jsonl
 .venv/
 dist/
+.cache/

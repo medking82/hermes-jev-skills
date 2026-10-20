@@ -48,7 +48,7 @@ class CodexRoutingTests(unittest.TestCase):
 
     def test_sensitive_and_user_opt_out_use_no_network(self):
         ask = Mock(side_effect=AssertionError("unexpected network"))
-        for turn in ("My password is a synthetic fixture", "Native-only: fix the screen", "不要使用 Jev，修改界面"):
+        for turn in ("My password is a synthetic fixture", "Native-only: fix the screen", "不要使用 Jev，修改界面", "这是一条包含密码的合成测试请求"):
             self.assertEqual(codex.select(turn, self.catalog, ask_fn=ask)["status"], "fail_open")
         ask.assert_not_called()
 
@@ -80,6 +80,7 @@ class CodexRoutingTests(unittest.TestCase):
             reply = self.ask(state, questions, **kwargs)
             if "workflow" in questions:
                 reply["answers"]["workflow"] = {"choice": "search", "confidence": .8}
+                reply["answers"]["workflow_needed"] = {"noul": .9}
             else:
                 reply["answers"]["needs_skill"]["noul"] = .1
             return reply
@@ -87,6 +88,15 @@ class CodexRoutingTests(unittest.TestCase):
         self.assertEqual(result["skills"], [])
         self.assertEqual(result["workflow"], "search")
         self.assertEqual(len(self.calls), 2)
+
+    def test_workflow_choice_without_applicability_does_not_add_a_phase(self):
+        def ask(state, questions, **kwargs):
+            reply = self.ask(state, questions, **kwargs)
+            if "workflow" in questions:
+                reply["answers"].update(workflow={"choice": "search", "confidence": .99}, workflow_needed={"noul": .1})
+            return reply
+        result = codex.select("Fix a known one-line typo", self.catalog, ask_fn=ask)
+        self.assertNotIn("workflow", result)
 
     def test_namespaced_host_id_is_retained(self):
         rows = [self.catalog[1]]

@@ -3,7 +3,7 @@
 Source: `medking82/hermes-jev-skills`, `codex/README.md`.
 Use `python codex/install.py --check` then `python codex/install.py --apply` from the
 canonical checkout. The Codex installer does not run the upstream multi-agent installer.
-It installs the toolkit and one `jev` skill, archives prior standalone Jev skills and
+It installs the toolkit and one `jev` skill, dynamically archives all prior `jev-*` skills and
 disables their original discovery paths in Codex config. Backups stay under Codex home.
 
 `UserPromptSubmit` runs the selector before the main model. The hook recommends one
@@ -17,8 +17,10 @@ require review again. Do not fabricate trust hashes or bypass trust. Restart or 
 Codex when required by the host. `scripts/jev.py status` shows only actual recorded
 hook work; a manual replay is not host-activation evidence.
 
-The hook keeps prompt-free metadata and a per-turn fingerprint/result. It never stores
-raw prompts, credentials, transcripts or retrieved content. Duplicate turn delivery
+Persistent hook receipts/caches keep only metadata and a per-turn fingerprint/result,
+without raw prompts, credentials, transcripts or retrieved content. Windows briefly
+spools non-sensitive stdin for the shared hidden runner and deletes it in `finally`.
+Duplicate turn delivery
 can reuse a result; later turns are reevaluated. Disable network selection with
 `JEV_CODEX_OFF=1`; the main model continues normally.
 

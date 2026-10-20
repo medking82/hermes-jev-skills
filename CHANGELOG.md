@@ -5,7 +5,7 @@
 - Add the fork's Codex-only unified `$jev` entrypoint, bounded `UserPromptSubmit`
   skill selection, speculative design-mode routing, exact-turn deduplication and
   prompt-free receipts. Preserve explicit models, tools and scope. Archive/disable
-  the eleven standalone Codex Jev skills with recoverable runtime backups; preserve
+  all standalone Codex `jev-*` skills with recoverable runtime backups; preserve
   upstream workflows as references. Add offline behavior/installer regressions and
   a test-gated upstream integration workflow. Existing Hermes behavior is unchanged.
 

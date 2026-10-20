@@ -29,3 +29,7 @@ jobs:
           chmod +x "$shim_dir/python3"
           export PATH="$shim_dir:$PATH"
           python -m unittest discover -s tests -p test_install_fallback.py -v
+      - name: Validate Codex Adapter In An Isolated Profile
+        if: matrix.python == '3.13'
+        shell: pwsh
+        run: python -B codex/check.py

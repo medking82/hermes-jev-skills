@@ -46,9 +46,7 @@ jobs:
       - name: Validate Toolkit And Codex Integration
         if: steps.merge.outputs.changed == 'true'
         run: |
-          python -B -m unittest discover -s tests
-          python -B -m unittest discover -s router-dashboard/tests
-          python -B scripts/check_release.py
+          python -B codex/check.py --full
       - name: Publish An Integration PR
         if: steps.merge.outputs.changed == 'true'
         shell: bash

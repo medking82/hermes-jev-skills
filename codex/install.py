@@ -31,7 +31,8 @@ def package(repo: Path) -> dict[str, bytes]:
             if path.is_symlink():
                 raise ValueError("symlink in the Codex skill source")
             files[path.relative_to(source).as_posix()] = path.read_bytes()
-    for name in LEGACY_SKILLS:
+    upstream_names = sorted(p.name for p in (repo / "skills").glob("jev-*") if (p / "SKILL.md").is_file())
+    for name in upstream_names:
         root = repo / "skills" / name
         if not (root / "SKILL.md").is_file():
             raise ValueError("upstream workflow missing: " + name)
@@ -53,6 +54,7 @@ def package(repo: Path) -> dict[str, bytes]:
             elif path.name == "SKILL.md":
                 continue  # No nested discovery entrypoints.
             files["references/upstream/" + name + "/" + relative] = content
+    files["references/upstream/index.json"] = (json.dumps({"workflows": upstream_names}, indent=2) + "\n").encode()
     return files
 
 
@@ -61,6 +63,8 @@ def launcher(python: Path) -> bytes:
     # argv and delete its private, short-lived file even when the adapter fails.
     escaped = str(python).replace("'", "''")
     return ("""$ErrorActionPreference = 'Stop'
+[Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $eventFile = $null
 try {
     $codexRoot = Split-Path -Parent $PSScriptRoot
@@ -68,8 +72,13 @@ try {
     $adapter = Join-Path $codexRoot 'skills/jev/scripts/jev.py'
     $inbox = Join-Path $PSScriptRoot 'inbox'
     [IO.Directory]::CreateDirectory($inbox) | Out-Null
+    $jevEventText = [Console]::In.ReadToEnd()
+    if ($jevEventText -match '(?i)api[_ -]?key|password|bearer\\s|token\\s*[:=]|密码|密钥|口令|私钥') {
+        [Console]::Out.WriteLine('{}')
+        exit 0
+    }
     $eventFile = Join-Path $inbox ([guid]::NewGuid().ToString('N') + '.json')
-    [IO.File]::WriteAllText($eventFile, [Console]::In.ReadToEnd(), [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($eventFile, $jevEventText, [Text.UTF8Encoding]::new($false))
     & $hidden -FilePath '""" + escaped + """' -ArgumentList @('-B', $adapter, 'hook', '--event-file', $eventFile) -WorkingDirectory $PSScriptRoot
 } catch {
     [Console]::Out.WriteLine('{}')
@@ -152,13 +161,16 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
     config = tomllib.loads(config_text)
     configured = {str(Path(s["path"]).resolve()) for s in config.get("skills", {}).get("config", [])
                   if s.get("enabled") is False and "path" in s}
-    for name in LEGACY_SKILLS:
+    retired_names = sorted(set(LEGACY_SKILLS) | {
+        p.name for p in (repo / "skills").glob("jev-*") if (p / "SKILL.md").is_file()
+    } | {p.name for p in (home / "skills").glob("jev-*") if p.is_dir()})
+    for name in retired_names:
         old = home / "skills" / name / "SKILL.md"
         if str(old.resolve()) not in configured:
             config_text += '\n[[skills.config]]\npath = ' + json.dumps(old.as_posix()) + '\nenabled = false\n'
     tomllib.loads(config_text)
     payload[config_file] = config_text.encode("utf-8")
-    retired = [home / "skills" / name for name in LEGACY_SKILLS if (home / "skills" / name).exists()]
+    retired = [home / "skills" / name for name in retired_names if (home / "skills" / name).exists()]
     for path in retired:
         if path.is_symlink() or path.resolve().parent != (home / "skills").resolve():
             raise ValueError("unsafe retirement target")
@@ -198,7 +210,7 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
         owned = {p.relative_to(home).as_posix(): sha(b) for p, b in payload.items()
                  if p not in (hook_file, config_file)}
         manifest = {"adapter_version": VERSION, "files": owned, "hook_handler": new_handler,
-                    "backup": str(backup), "retired": list(LEGACY_SKILLS),
+                    "backup": str(backup), "retired": retired_names,
                     "source_commit": source_commit, "source_dirty": bool(dirty.stdout.strip())}
         manifest_file.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     except Exception:

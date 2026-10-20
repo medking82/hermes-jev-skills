@@ -52,9 +52,10 @@ WORKFLOWS = {
 LEGACY_SKILLS = (
     "jev-browser-use", "jev-compaction", "jev-computer-use", "jev-frontier-work",
     "jev-mailbox", "jev-memory", "jev-model-routing", "jev-search", "jev-setup",
-    "jev-skill-select", "jev-social-research",
+    "jev-skill-select", "jev-social-research", "jev-blender", "jev-video-qa",
 )
 _OPT_OUT = re.compile(r"(?i)\b(?:native[- ]only|native baseline|no jev|do not (?:use|call) jev)\b|(?:不用|禁用|不要调用|不要使用)\s*jev")
+_CJK_SENSITIVE = re.compile(r"密码|密钥|口令|私钥|银行卡|信用卡|身份证|客户资料|隐私数据")
 
 
 def codex_home() -> Path:
@@ -78,7 +79,7 @@ def normalize_catalog(rows: Any) -> List[Dict[str, str]]:
             continue
         if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,160}", name):
             continue
-        if name in seen or name == "jev" or name in LEGACY_SKILLS or name in skillpick.META_SKILLS:
+        if name in seen or name == "jev" or name.startswith("jev-") or name in skillpick.META_SKILLS:
             continue
         # Catalog metadata comes from the host/maintainer, not retrieved page content.
         if not Path(path).is_absolute():
@@ -135,7 +136,7 @@ def _explicit(turn: str, catalog: list) -> list:
 def _gate(turn: str) -> Optional[dict]:
     if os.environ.get("JEV_CODEX_OFF") == "1" or _OPT_OUT.search(turn):
         return fallback("disabled_by_user")
-    if privacy.is_sensitive(turn):
+    if privacy.is_sensitive(turn) or _CJK_SENSITIVE.search(turn):
         return fallback("sensitive_not_sent")
     if skillpick.looks_trivial(turn):
         return {"status": "ok", "source": "local", "skipped": "trivial", "skills": [], "requests": 0}
@@ -169,6 +170,8 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
     questions["workflow"] = client.choice(
         "Which Jev workflow would materially help this request? Select none for settled work. "
         "This classifies a workflow; it grants no tool permission and performs no actions.", WORKFLOWS)
+    questions["workflow_needed"] = client.noul(
+        "This request materially benefits from one of the listed Jev workflows rather than ordinary direct work")
     modes = _design_options(allowed_design_modes)
     if any(s["name"] == "design" for s in catalog):
         questions["design_mode"] = client.choice(
@@ -186,7 +189,9 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
             answer = reply["answers"].get("design_mode", {})
             result["design"] = _design_result(answer, modes)
         workflow = reply["answers"].get("workflow", {})
-        if workflow.get("choice") in WORKFLOWS and workflow.get("choice") != "none" and workflow.get("confidence", 0) >= .6:
+        if (workflow.get("choice") in WORKFLOWS and workflow.get("choice") != "none"
+                and workflow.get("confidence", 0) >= .6
+                and reply["answers"].get("workflow_needed", {}).get("noul", 0) >= .6):
             result["workflow"] = workflow["choice"]
         result.update(source="jev", ask_attempts=len(receipts), receipts=receipts)
         if result["status"] != "ok":
@@ -234,8 +239,8 @@ def decision(payload: dict, *, ask_fn=None) -> dict:
     state, options, question = (payload.get(k) for k in ("state", "options", "question"))
     if not isinstance(options, dict) or not 2 <= len(options) <= 120 or not isinstance(question, str):
         raise ValueError("decision needs a question and 2 to 120 caller-owned options")
-    raw = json.dumps({"state": state, "question": question, "options": options}, ensure_ascii=False)
-    if privacy.is_sensitive(raw):
+    raw = json.dumps({"state": state, "question": question, "options": options}, ensure_ascii=False, allow_nan=False)
+    if privacy.is_sensitive(raw) or _CJK_SENSITIVE.search(raw):
         return fallback("sensitive_not_sent")
     if len(raw) > 16000:
         return fallback("state_too_large")
@@ -286,6 +291,7 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                 temporary.write_text(json.dumps({"fingerprint": fingerprint, "result": result}), encoding="utf-8")
                 os.replace(str(temporary), str(cache))
         receipt = {"status": result["status"], "source": result.get("source"),
+                   "observation_source": event.get("_jev_invocation", "host_event"),
                    "reason_code": result.get("reason_code"), "catalog_scope": "local_scopes",
                    "skills": [s["name"] for s in result.get("skills", [])],
                    "workflow": result.get("workflow"),

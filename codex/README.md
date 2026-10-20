@@ -13,9 +13,9 @@ python -B codex/install.py --check
 python -B codex/install.py --apply
 ```
 
-Use the workstation's hidden runner on Windows. The preview names the eleven retired
+Use the workstation's hidden runner on Windows. The preview names the retired
 entrypoints and the hook warning. Apply preserves existing unrelated hooks/config,
-backs up changed runtime files, archives standalone Jev skill directories and disables
+backs up changed runtime files, dynamically archives every standalone `jev-*` directory and disables
 their former discovery paths. Existing keys and provider settings are neither read by
 the agent nor changed by the installer. The generic upstream `install.py` installs
 multiple agents/skills; use the Codex-specific installer for this consolidated setup.
@@ -76,9 +76,9 @@ inputs, never an automatic executable update source.
 ## Validation
 
 ```text
-python -B -m unittest discover -s tests -p test_codex*.py
-python -B -m unittest discover -s tests
-python -B scripts/check_release.py
+python -B codex/check.py
+# Full suite only on upstream-supported Linux/macOS:
+python -B codex/check.py --full
 ```
 
 Tests are offline and use synthetic state/fake transport. A separate small live smoke
