@@ -39,6 +39,7 @@ available-skills catalog to `select`; exact namespaced IDs and paths are retaine
 
 Discovery stops at skill entrypoints instead of walking resources, dependencies or
 embedded examples. Timeouts/catalog failures leave explicit, prompt-free reason codes.
+Inactive configured paths are compared lexically without probing other filesystems.
 
 Only duplicate delivery of the same turn may reuse a prompt-free fingerprint/result.
 There is no cross-turn decision cache or added retry loop. `JEV_CODEX_OFF=1` disables the
@@ -75,6 +76,10 @@ change endpoints/models or enable new features. Review the diff and passing chec
 merging, then preview/apply the Codex installer from the accepted fork commit.
 Conflicts or failed checks stop publication. Other public Jev implementations are research
 inputs, never an automatic executable update source.
+
+GitHub's repository setting that allows Actions to create PRs must be enabled; GitHub
+groups that permission with review approval. This workflow only creates/updates the
+integration PR and never approves or merges it. Default workflow permissions remain read.
 
 ## Validation
 

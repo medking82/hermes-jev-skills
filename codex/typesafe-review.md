@@ -21,6 +21,7 @@ not claimed as executed or visually inspected.
 | [State](https://docs.typesafe.ai/concepts/state) should be small and relevant | Send a bounded redacted task, not full transcripts, paths, source files or private records |
 | [Jaggedness](https://docs.typesafe.ai/model-jaggedness/jev-1.13) includes counting, date/math, indirection, order effects and adversarial state | Keep calculations in code; use literal questions and existing eligibility checks |
 | [Models](https://docs.typesafe.ai/models) distinguishes aliases, stable/preview and returned versions | Preserve existing settings, record the returned model, enable no preview by source sync |
+| Current pricing counts input tokens | Batch to reduce round trips/repeated state; extra question text still has a cost, recorded in receipts |
 | [Request rules](https://docs.typesafe.ai/api/errors) require finite JSON numbers | Reject non-finite bounded-decision state locally; failures never block Codex |
 
 ## Features Preserved Or Deferred

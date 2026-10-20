@@ -210,6 +210,26 @@ class CodexHookTests(unittest.TestCase):
         self.assertIn("system-test", names)
         self.assertNotIn("dependency", names)
 
+    def test_unrelated_config_paths_are_not_probed(self):
+        unrelated = self.home / "unavailable-project"
+        (self.home / "config.toml").write_text('[projects.' + json.dumps(str(unrelated)) + ']\ntrust_level = "trusted"\n')
+        original = Path.resolve
+        def guarded(path, *args, **kwargs):
+            if "unavailable-project" in str(path):
+                raise AssertionError("unrelated filesystem was probed")
+            return original(path, *args, **kwargs)
+        with patch.object(Path, "resolve", guarded):
+            self.assertEqual(len(codex.local_catalog(self.home, self.home)), 1)
+
+    def test_explicitly_trusted_project_scope_is_included(self):
+        project = self.home / "project"
+        entry = project / ".agents/skills/project-helper/SKILL.md"
+        entry.parent.mkdir(parents=True)
+        entry.write_text("---\nname: project-helper\ndescription: Work on this project\n---\n")
+        (self.home / "config.toml").write_text('[projects.' + json.dumps(str(project)) + ']\ntrust_level = "trusted"\n')
+        names = {s["name"] for s in codex.local_catalog(self.home, project)}
+        self.assertIn("project-helper", names)
+
     def test_hard_deadline_returns_empty_context(self):
         with patch("jevkit.codex.subprocess.run", side_effect=subprocess.TimeoutExpired("worker", .05)), patch("jevkit.codex.codex_home", return_value=self.home):
             self.assertEqual(codex._bounded_hook(self.event, deadline=.05), {})

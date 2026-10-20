@@ -97,14 +97,17 @@ def local_catalog(home: Path, cwd: Path) -> list:
         raise ValueError("Python 3.11 or newer is required")
     config_file = home / "config.toml"
     config = tomllib.loads(config_file.read_text(encoding="utf-8-sig")) if config_file.exists() else {}
-    disabled = {str(Path(s["path"]).resolve()) for s in config.get("skills", {}).get("config", [])
+    # Config also contains inactive/remote/retired paths. Canonicalizing all of
+    # them probes unrelated filesystems and can stall an otherwise local turn.
+    path_key = lambda value: os.path.normcase(os.path.abspath(value))
+    disabled = {path_key(s["path"]) for s in config.get("skills", {}).get("config", [])
                 if s.get("enabled") is False and isinstance(s.get("path"), str)}
     roots = [home / "skills"]
     # A hook cannot infer project trust from the prompt. Read project skills only
     # under a configured trusted project; do not walk arbitrary plugin caches.
-    trusted = [Path(p).resolve() for p, settings in config.get("projects", {}).items()
-               if settings.get("trust_level") == "trusted"]
-    cwd = cwd.resolve()
+    trusted = [Path(os.path.abspath(p)) for p, settings in config.get("projects", {}).items()
+               if Path(p).is_absolute() and settings.get("trust_level") == "trusted"]
+    cwd = Path(os.path.abspath(cwd))
     owners = [p for p in trusted if cwd == p or p in cwd.parents]
     if owners:
         owner = max(owners, key=lambda p: len(p.parts))
@@ -117,7 +120,7 @@ def local_catalog(home: Path, cwd: Path) -> list:
         if not root.is_dir():
             continue
         for path in _entrypoints(root):
-            if path.is_symlink() or str(path.resolve()) in disabled:
+            if path.is_symlink() or path_key(path) in disabled:
                 continue
             metadata = path.parent / "agents" / "openai.yaml"
             if metadata.exists() and re.search(r"allow_implicit_invocation:\s*false\b", metadata.read_text(encoding="utf-8")):
@@ -125,7 +128,7 @@ def local_catalog(home: Path, cwd: Path) -> list:
             with path.open(encoding="utf-8-sig") as stream:
                 fields = skillpick._front_matter(stream.read(8000))
             if fields.get("name") and fields.get("description"):
-                rows.append({"name": fields["name"], "description": fields["description"], "path": str(path.resolve())})
+                rows.append({"name": fields["name"], "description": fields["description"], "path": str(path.absolute())})
     return normalize_catalog(rows)
 
 
