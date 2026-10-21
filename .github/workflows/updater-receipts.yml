@@ -1,0 +1,41 @@
+name: Updater Receipts
+
+on:
+  repository_dispatch:
+    types: [codex-updater-receipt]
+  schedule:
+    # More than 3h overdue is checked every 6h: notification can take up to 9h
+    # after the last receipt, plus Actions scheduling/queue delay.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: updater-receipts
+  cancel-in-progress: false
+
+jobs:
+  receive:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       (github.actor == github.repository_owner &&
+        (github.event_name != 'repository_dispatch' ||
+         github.event.sender.login == github.repository_owner)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Receive Or Check Reporting
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -B codex/receipt_cloud.py --event "$GITHUB_EVENT_PATH" --policy codex/receipt-policy.json

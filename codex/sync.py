@@ -21,6 +21,9 @@ import official
 from upstream import (FORK, WORKFLOW, STOP_TITLE, StopUpdate, commit, controls, git,
                       require_ancestor, write_json)
 
+RUNNERS = ("sync.py", "upstream.py", "official.py", "invoke-sync.ps1", "invoke-hidden.vbs",
+           "report.py", "receipt_cloud.py", "reporting.json")
+
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -177,17 +180,31 @@ def native_tests(stage, temporary):
     env.update(HOME=str(profile), USERPROFILE=str(profile), CODEX_HOME=str(profile / ".codex"),
                HERMES_HOME=str(profile / ".hermes"), XDG_CONFIG_HOME=str(profile / ".config"),
                PYTHONUTF8="1", JEV_RELEASE_DENYLIST=str(profile / "absent-denylist.txt"))
-    execute([sys.executable, "-B", str(stage / "codex/check.py")], cwd=stage, env=env, timeout=1200)
+    try:
+        execute([sys.executable, "-B", str(stage / "codex/check.py")], cwd=stage, env=env, timeout=1200)
+    except (StopUpdate, subprocess.SubprocessError):
+        raise StopUpdate("local tests failed; installed release retained") from None
 
 
 def update(state, *, apply, get=api, test=native_tests):
+    progress = {}
+    try:
+        return _update(state, apply=apply, get=get, test=test, progress=progress)
+    except StopUpdate as error:
+        error.commit = progress.get("commit")
+        error.run_url = progress.get("run_url")
+        raise
+
+
+def _update(state, *, apply, get, test, progress):
     repo, home = Path(state["repo"]), Path(state["home"])
-    if set(state["runner_files"]) != {"sync.py", "upstream.py", "official.py"}:
+    if set(state["runner_files"]) != set(RUNNERS):
         raise StopUpdate("pinned updater inventory is incomplete; manual enrollment required")
     for name, expected in state["runner_files"].items():
         if digest(Path(__file__).parent / name) != expected:
             raise StopUpdate("pinned updater code changed; manual enrollment required")
     before = clean_main(repo)
+    progress["commit"] = before
     current = installed(home)
     if before != current["source_commit"]:
         raise StopUpdate("local source and installed Jev differ; manual reconciliation required")
@@ -197,12 +214,14 @@ def update(state, *, apply, get=api, test=native_tests):
     workflow, runs = server_state(get)
     fetch_main(repo)
     candidate = commit(git(repo, "rev-parse", "FETCH_HEAD"))
+    progress["commit"] = candidate
     if before == candidate:
         return {"status": "unchanged", "commit": before}
     require_ancestor(repo, before, candidate)
     if controls(repo, candidate) != state["controls"]:
         raise StopUpdate("fork update changes approved controls; manual enrollment required")
     proof = publication_proof(candidate, workflow, runs, get)
+    progress["run_url"] = proof["run_url"]
     reference, _ = official.at_revision(repo, candidate)
     if proof.get("official") != reference["commit"]:
         raise StopUpdate("publication proof does not match the pinned official reference")
@@ -269,7 +288,7 @@ def enroll(repo, home, runtime):
     official.checkout(repo)
     result = {"repo": str(repo.resolve()), "home": str(home.resolve()), "enrolled_commit": current,
               "controls": controls(repo, current), "blocked": None,
-              "runner_files": {name: digest(runtime / name) for name in ("sync.py", "upstream.py", "official.py")}}
+              "runner_files": {name: digest(runtime / name) for name in RUNNERS}}
     write_json(runtime / "state.json", result)
     return {"status": "enrolled", "commit": current}
 
@@ -313,6 +332,7 @@ def main():
         write_json(runtime / "last-run.json", result)
     except (OSError, ValueError, KeyError, TypeError, StopUpdate, subprocess.SubprocessError, zipfile.BadZipFile) as error:
         result = {"status": "stopped", "reason": str(error), "event_id": str(time.time_ns()),
+                  "commit": getattr(error, "commit", None), "run_url": getattr(error, "run_url", None),
                   "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         if state is not None:
             state["blocked"] = result

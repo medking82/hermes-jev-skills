@@ -1399,6 +1399,11 @@ First release.
 
 ## Codex Adapter (Fork)
 
+- Report allowlisted local updater receipts to GitHub with persistent event deduplication,
+  peer task health and separate cloud liveness notices. Preserve sticky stops, exact-commit
+  tests, authorization, explicit-only/disabled skills and existing upstream maintenance.
+  Retire the model-driven chat monitor only after live delivery is verified.
+
 - Route exact design-mode commands and narrowly recognized component polish in code,
   preserving ambiguous/mixed requests for Jev. Extend the OFF switch to bounded decisions
   and correlate prompt-free receipts with actual Codex session/turn IDs and design modes.

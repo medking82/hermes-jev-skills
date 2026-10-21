@@ -156,8 +156,16 @@ class LocalUpdateTests(GitFixture):
         sync.load_installer(self.repo).install(self.repo, self.home, Path(sys.executable), apply=True)
         self.config = (self.home / "config.toml").read_bytes()
         self.hooks = (self.home / "hooks.json").read_bytes()
+        runner = self.root / "runtime"
+        runner.mkdir()
+        for name in sync.RUNNERS:
+            source = ROOT / "codex" / name
+            (runner / name).write_bytes(source.read_bytes() if source.is_file() else b"synthetic pinned launcher metadata\n")
+        self.runner_patch = patch.object(sync, "__file__", str(runner / "sync.py"))
+        self.runner_patch.start()
+        self.addCleanup(self.runner_patch.stop)
         self.state = {"repo": str(self.repo), "home": str(self.home), "controls": upstream.controls(self.repo, self.base),
-                      "runner_files": {n: sync.digest(ROOT / "codex" / n) for n in ("sync.py", "upstream.py", "official.py")}}
+                      "runner_files": {n: sync.digest(runner / n) for n in sync.RUNNERS}}
         # A trusted candidate changes toolkit code without touching adapter controls.
         self.write(self.repo, "jevkit/update_fixture.py", "# new upstream feature\n")
         self.save(self.repo)
