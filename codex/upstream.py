@@ -36,7 +36,7 @@ def commit(value):
 
 def controlled(path):
     """These changes need an explicit maintenance review, never automatic adoption."""
-    return (path in {"AGENTS.md", ".gitattributes", ".gitmodules"}
+    return (path in {"AGENTS.md", ".gitattributes", ".gitmodules", "vendor/typesafe-ai/.gitattributes"}
             or path.startswith(("codex/", ".github/", "jevkit/codex"))
             or path.startswith("tests/test_codex"))
 
@@ -69,43 +69,57 @@ def write_json(path, data):
     os.replace(temporary, path)
 
 
-def prepare(repo, output, *, validate_current=False, upstream=UPSTREAM):
+def prepare(repo, output, *, validate_current=False, upstream=UPSTREAM, official_upstream=None):
+    import official
     base = commit(git(repo, "rev-parse", "HEAD"))
     git(repo, "fetch", "--no-tags", upstream, "main")
     latest = commit(git(repo, "rev-parse", "FETCH_HEAD"))
     unchanged = git(repo, "merge-base", "--is-ancestor", latest, base, check=False).returncode == 0
-    if unchanged and not validate_current:
-        return {"changed": "false", "base": base, "candidate": base, "upstream": latest}
+    git(repo, "config", "user.name", "github-actions[bot]")
+    git(repo, "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
     if not unchanged:
-        git(repo, "config", "user.name", "github-actions[bot]")
-        git(repo, "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
         result = git(repo, "merge", "--no-edit", latest, check=False)
         if result.returncode:
             git(repo, "merge", "--abort", check=False)
             raise StopUpdate("upstream merge conflict; fork main was not changed")
+    require_controls(repo, base, git(repo, "rev-parse", "HEAD"))
+    reference = official.refresh(repo, upstream=official_upstream or official.URL)
+    if reference["changed"]:
+        git(repo, "add", "--", official.SNAPSHOT)
+        git(repo, "commit", "-m", "Update Official TypeSafe Skill Reference")
     candidate = commit(git(repo, "rev-parse", "HEAD"))
+    metadata = {"base": base, "candidate": candidate, "upstream": latest,
+                "official": reference["commit"], "repository": FORK}
+    if candidate == base and not validate_current:
+        return dict(metadata, changed="false")
     require_controls(repo, base, candidate)
     require_ancestor(repo, base, candidate)
     require_ancestor(repo, latest, candidate)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
-    git(repo, "bundle", "create", str(output / "candidate.bundle"), "HEAD")
-    metadata = {"base": base, "candidate": candidate, "upstream": latest, "repository": FORK}
+    git(repo, "bundle", "create", str(output / "candidate.bundle"), "HEAD", official.REF)
     write_json(output / "candidate.json", metadata)
     return dict(metadata, changed="true")
 
 
 def load_candidate(repo, artifact):
+    import official
     data = json.loads((Path(artifact) / "candidate.json").read_text(encoding="utf-8"))
     base, candidate, latest = (commit(data[k]) for k in ("base", "candidate", "upstream"))
     if data.get("repository") != FORK or git(repo, "rev-parse", "HEAD") != base:
         raise StopUpdate("candidate base does not match the trusted workflow checkout")
-    git(repo, "fetch", str(Path(artifact) / "candidate.bundle"), "HEAD:refs/jev-sync/candidate")
+    pinned = commit(data.get("official"))
+    git(repo, "fetch", str(Path(artifact) / "candidate.bundle"), "HEAD:refs/jev-sync/candidate",
+        official.REF + ":" + official.REF)
     if git(repo, "rev-parse", "refs/jev-sync/candidate") != candidate:
         raise StopUpdate("bundle does not match the tested commit")
     require_controls(repo, base, candidate)
     require_ancestor(repo, base, candidate)
     require_ancestor(repo, latest, candidate)
+    info, files = official.at_revision(repo, candidate)
+    if (info["commit"] != pinned or git(repo, "rev-parse", official.REF) != pinned
+            or files != official.source(repo, pinned)):
+        raise StopUpdate("candidate official reference does not match its source commit")
     return data
 
 

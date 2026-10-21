@@ -48,6 +48,12 @@ class CodexInstallTests(unittest.TestCase):
         self.assertFalse(self.old.exists())
         self.assertEqual((Path(report["backup"]) / "retired/jev-search/SKILL.md").read_text(), "old workflow\n")
         self.assertEqual(len(list((self.home / "skills").rglob("SKILL.md"))), 1)
+        reference = self.home / "skills/jev/references/official/typesafe-ai"
+        self.assertTrue((reference / "guide.md").is_file())
+        self.assertFalse((reference / "SKILL.md").exists())
+        manifest = json.loads((self.home / "jev/installation.json").read_text())
+        self.assertEqual(manifest["official_source"]["repository"], "typesafe-ai/skills")
+        self.assertEqual(manifest["official_source"]["commit"], json.loads((reference / "source.json").read_text())["commit"])
         hooks = json.loads((self.home / "hooks.json").read_text())["hooks"]["UserPromptSubmit"]
         self.assertIn(self.foreign, [h for g in hooks for h in g["hooks"]])
         config = self.installer.tomllib.loads((self.home / "config.toml").read_text())

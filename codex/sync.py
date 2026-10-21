@@ -16,6 +16,8 @@ import tempfile
 import time
 import zipfile
 
+import official
+
 from upstream import (FORK, WORKFLOW, STOP_TITLE, StopUpdate, commit, controls, git,
                       require_ancestor, write_json)
 
@@ -180,6 +182,8 @@ def native_tests(stage, temporary):
 
 def update(state, *, apply, get=api, test=native_tests):
     repo, home = Path(state["repo"]), Path(state["home"])
+    if set(state["runner_files"]) != {"sync.py", "upstream.py", "official.py"}:
+        raise StopUpdate("pinned updater inventory is incomplete; manual enrollment required")
     for name, expected in state["runner_files"].items():
         if digest(Path(__file__).parent / name) != expected:
             raise StopUpdate("pinned updater code changed; manual enrollment required")
@@ -199,6 +203,9 @@ def update(state, *, apply, get=api, test=native_tests):
     if controls(repo, candidate) != state["controls"]:
         raise StopUpdate("fork update changes approved controls; manual enrollment required")
     proof = publication_proof(candidate, workflow, runs, get)
+    reference, _ = official.at_revision(repo, candidate)
+    if proof.get("official") != reference["commit"]:
+        raise StopUpdate("publication proof does not match the pinned official reference")
     require_ancestor(repo, proof["base"], candidate)
     require_ancestor(repo, proof["upstream"], candidate)
     cache = repo / ".cache/jev-sync"
@@ -233,6 +240,7 @@ def update(state, *, apply, get=api, test=native_tests):
         if any(digest(safe_file(home, name)) != saved[name] for name in ("config.toml", "hooks.json")):
             raise StopUpdate("post-install configuration mismatch")
         return {"status": "updated", "commit": candidate, "previous_commit": before,
+                "official_source": reference["commit"],
                 "run_url": proof["run_url"], "backup": report["backup"], "owned_files": len(final["files"])}
 
 
@@ -257,10 +265,11 @@ def enroll(repo, home, runtime):
     if current != manifest["source_commit"]:
         raise StopUpdate("enrollment requires source and installed Jev at the same commit")
     if Path(__file__).parent.resolve() != runtime.resolve():
-        raise StopUpdate("copy approved sync.py and upstream.py into the runtime before enrollment")
+        raise StopUpdate("copy approved sync.py, upstream.py and official.py into the runtime before enrollment")
+    official.checkout(repo)
     result = {"repo": str(repo.resolve()), "home": str(home.resolve()), "enrolled_commit": current,
               "controls": controls(repo, current), "blocked": None,
-              "runner_files": {name: digest(runtime / name) for name in ("sync.py", "upstream.py")}}
+              "runner_files": {name: digest(runtime / name) for name in ("sync.py", "upstream.py", "official.py")}}
     write_json(runtime / "state.json", result)
     return {"status": "enrolled", "commit": current}
 

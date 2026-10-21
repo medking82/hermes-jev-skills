@@ -15,6 +15,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "codex"))
 import upstream
+import official
 
 
 class GitFixture(unittest.TestCase):
@@ -29,6 +30,18 @@ class GitFixture(unittest.TestCase):
         upstream.git(self.repo, "config", "user.email", "test@example.invalid")
         upstream.git(self.repo, "config", "commit.gpgsign", "false")
         self.write(self.repo, "engine.txt", "base\n")
+        self.official = self.root / "official"
+        self.official.mkdir()
+        upstream.git(self.official, "init", "-b", "main")
+        upstream.git(self.official, "config", "user.name", "Synthetic Test")
+        upstream.git(self.official, "config", "user.email", "test@example.invalid")
+        upstream.git(self.official, "config", "commit.gpgsign", "false")
+        self.write(self.official, "skills/typesafe-ai/SKILL.md",
+                   "---\nname: typesafe-ai\nlicense: MIT\n---\n\n# Synthetic Reference\n")
+        self.write(self.official, "skills/typesafe-ai/LICENSE",
+                   "MIT License\n\nPermission is hereby granted for this synthetic fixture.\n")
+        self.save(self.official)
+        official.refresh(self.repo, upstream=str(self.official))
         self.save(self.repo)
         self.base = upstream.git(self.repo, "rev-parse", "HEAD")
         self.remote = self.root / "remote.git"
@@ -53,12 +66,16 @@ class GitFixture(unittest.TestCase):
     def candidate(self):
         self.write(self.other, "engine.txt", "new upstream\n")
         self.save(self.other)
-        return upstream.prepare(self.repo, self.artifact, upstream=str(self.other))
+        return self.prepare()
+
+    def prepare(self, **kwargs):
+        return upstream.prepare(self.repo, self.artifact, upstream=str(self.other),
+                                official_upstream=str(self.official), **kwargs)
 
 
 class UpstreamIntegrationTests(GitFixture):
     def test_unchanged_skips_publication(self):
-        result = upstream.prepare(self.repo, self.artifact, upstream=str(self.other))
+        result = self.prepare()
         self.assertEqual(result["changed"], "false")
         self.assertFalse(self.artifact.exists())
 
@@ -76,7 +93,7 @@ class UpstreamIntegrationTests(GitFixture):
         self.write(self.other, "engine.txt", "upstream choice\n")
         self.save(self.other)
         with self.assertRaisesRegex(upstream.StopUpdate, "conflict"):
-            upstream.prepare(self.repo, self.artifact, upstream=str(self.other))
+            self.prepare()
         self.assertEqual(upstream.git(self.repo, "rev-parse", "HEAD"), fork)
         self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
         self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
@@ -85,7 +102,7 @@ class UpstreamIntegrationTests(GitFixture):
         self.write(self.other, "codex/authorization.py", "# changed control\n")
         self.save(self.other)
         with self.assertRaisesRegex(upstream.StopUpdate, "manual review"):
-            upstream.prepare(self.repo, self.artifact, upstream=str(self.other))
+            self.prepare()
         self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
 
     def test_moved_main_is_not_overwritten(self):
@@ -111,7 +128,7 @@ class UpstreamIntegrationTests(GitFixture):
         self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
 
     def test_validate_current_exercises_pipeline_without_pushing_change(self):
-        data = upstream.prepare(self.repo, self.artifact, validate_current=True, upstream=str(self.other))
+        data = self.prepare(validate_current=True)
         self.assertEqual(data["candidate"], self.base)
         result = upstream.publish(self.repo, self.artifact, self.root / "result.json")
         self.assertEqual(result["status"], "unchanged")
@@ -123,8 +140,8 @@ class LocalUpdateTests(GitFixture):
         super().setUp()
         import sync
         self.sync = sync
-        for name in ("codex", "jevkit", "skills"):
-            shutil.copytree(ROOT / name, self.repo / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        for name in ("codex", "jevkit", "skills", "vendor"):
+            shutil.copytree(ROOT / name, self.repo / name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
         self.save(self.repo)
         self.base = upstream.git(self.repo, "rev-parse", "HEAD")
@@ -140,7 +157,7 @@ class LocalUpdateTests(GitFixture):
         self.config = (self.home / "config.toml").read_bytes()
         self.hooks = (self.home / "hooks.json").read_bytes()
         self.state = {"repo": str(self.repo), "home": str(self.home), "controls": upstream.controls(self.repo, self.base),
-                      "runner_files": {n: sync.digest(ROOT / "codex" / n) for n in ("sync.py", "upstream.py")}}
+                      "runner_files": {n: sync.digest(ROOT / "codex" / n) for n in ("sync.py", "upstream.py", "official.py")}}
         # A trusted candidate changes toolkit code without touching adapter controls.
         self.write(self.repo, "jevkit/update_fixture.py", "# new upstream feature\n")
         self.save(self.repo)
@@ -173,6 +190,7 @@ class LocalUpdateTests(GitFixture):
             stream = io.BytesIO()
             with zipfile.ZipFile(stream, "w") as archive:
                 archive.writestr("result.json", json.dumps({"repository": upstream.FORK, "workflow": upstream.WORKFLOW,
+                    "official": official.checkout(self.repo)[0]["commit"],
                     "candidate": self.head, "base": self.base, "upstream": self.head, "run_id": "17", "status": "updated"}))
             return stream.getvalue()
         self.fail("unexpected endpoint " + endpoint)
@@ -247,6 +265,23 @@ class LocalUpdateTests(GitFixture):
             return {"artifacts": []} if endpoint.endswith("/artifacts?per_page=100") else original(endpoint, **kwargs)
         with self.assertRaisesRegex(upstream.StopUpdate, "no successful exact-commit"):
             self.sync.update(self.state, apply=True, get=no_proof)
+        self.assert_not_applied()
+
+    def test_wrong_official_source_in_publication_proof_cannot_install(self):
+        original = self.get
+        def wrong_source(endpoint, **kwargs):
+            response = original(endpoint, **kwargs)
+            if endpoint.endswith("/zip"):
+                with zipfile.ZipFile(io.BytesIO(response)) as archive:
+                    data = json.loads(archive.read("result.json"))
+                data["official"] = self.base
+                stream = io.BytesIO()
+                with zipfile.ZipFile(stream, "w") as archive:
+                    archive.writestr("result.json", json.dumps(data))
+                return stream.getvalue()
+            return response
+        with self.assertRaisesRegex(upstream.StopUpdate, "pinned official reference"):
+            self.sync.update(self.state, apply=True, get=wrong_source)
         self.assert_not_applied()
 
     def test_config_change_during_tests_stops_without_overwriting_user(self):

@@ -54,3 +54,13 @@ tests and missing provenance stop it persistently. A chat heartbeat reports new 
 updates; it never clears a stop or bypasses trust. See `codex/README.md` for enrollment,
 receipts, recovery and runtime availability. Preview image/Box, new provider routes,
 local workers and browser automation are not enabled by source sync.
+
+The same pipeline pins the official `typesafe-ai/skills` reference, including its MIT
+license, source commit and file hashes. An official-only documentation change also
+requires the exact tested bundle and publication proof. Executables, new invocation
+metadata, symlinks, license changes and rewritten history stop for review. Runtime packages
+the source as `references/official/typesafe-ai/guide.md` under the existing `/jev`;
+it adds no discovery entrypoint or authorization. Both sources honor the existing stop
+issue and local blocked state. For TypeSafe application/API work, read
+[Build With TypeSafe](typesafe.md) and the relevant live docs instead of treating the
+snapshot as a permanent API contract.

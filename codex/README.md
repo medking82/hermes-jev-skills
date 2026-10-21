@@ -4,6 +4,13 @@ The maintained Codex layer of this fork installs one `$jev` skill (shown as `/je
 where the host offers skill slash completion). Upstream Jev workflows become references
 and retain their CLI commands. The main model remains responsible for execution.
 
+The same entrypoint also covers building/evaluating TypeSafe API workflows. It routes
+to a concise integration reference and the complete MIT-licensed official skill from
+`typesafe-ai/skills`, pinned with source commit/file hashes. Only `/jev` is discoverable;
+the official `SKILL.md` is packaged as a subordinate `guide.md`, never a second skill.
+Use relevant live docs for current API/SDK contracts; routine hook routing keeps the
+existing adapter instead of loading those references on every turn.
+
 ## Install And Retire Standalone Skills
 
 Python 3.11+ is required for Codex TOML configuration. From this checkout:
@@ -101,6 +108,29 @@ shared hidden runner can consume it, then removes the file in `finally`.
 intact except the small `skillpick.ask_fn` injection seam; Codex-specific files live
 under `codex/`, `jevkit/codex.py` and `tests/test_codex*.py`.
 
+The same scheduled pipeline also checks `https://github.com/typesafe-ai/skills.git`.
+Its `skills/typesafe-ai` Markdown/MIT-license files are pinned under
+`vendor/typesafe-ai/`, with source provenance and byte-preserving Git attributes.
+An official-only change creates a candidate even when Hermes is unchanged. The bundle
+includes the official Git objects, so verification/publication can compare the copied
+bytes to the exact official source commit without fetching new content with write
+credentials. The result artifact records both upstream identities, and the local
+updater checks the official commit against the candidate snapshot before tests/install.
+
+New scripts, invocation metadata, symlinks/executable file modes, license/identity changes,
+rewritten official history and oversized/unsupported files stop the update for manual
+review. Only bounded reference data updates automatically; Codex adapter, hook, provider,
+permission, threshold and updater controls retain their existing review boundary. The
+official guide is subordinate to umbrella/user rules, including per-turn-only hook
+caching and existing retry policy. Official cookbook examples grant no tool permissions.
+Existing stop issues and local blocked state apply to both sources; adding this source
+never clears an earlier stop. A separately authorized implementation PR can install
+the initial accepted snapshot while retaining that stopped automatic-update state.
+
+To verify the pinned package offline, run `python -B codex/official.py verify`; add
+`--live` to compare it to the actual official Git commit. `refresh` updates only the
+intact owned snapshot on an explicitly selected maintenance branch; it installs nothing.
+
 `Codex Upstream Sync` runs daily at 02:23 UTC (10:23 MYT), or on manual dispatch.
 Confirm its actual state with `gh api repos/medking82/hermes-jev-skills/actions/workflows/codex-upstream-sync.yml`;
 the YAML schedule alone does not establish that GitHub has enabled it.
@@ -115,7 +145,7 @@ bypasses branch protection. Validation is inside this workflow: publication does
 depend on a second workflow being triggered by `GITHUB_TOKEN`.
 
 Changes to `codex/`, `jevkit/codex*`, `tests/test_codex*`, `.github/`, `AGENTS.md`,
-`.gitattributes` or `.gitmodules` require manual maintenance. These include the umbrella,
+`.gitattributes`, `.gitmodules` or `vendor/typesafe-ai/.gitattributes` require manual maintenance. These include the umbrella,
 hook, authorization boundaries, installer and updater itself. Ordinary upstream toolkit
 and reference updates can pass automatically. Other public Jev implementations remain
 research inputs, never automatic executable update sources.
