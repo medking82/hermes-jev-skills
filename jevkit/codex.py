@@ -342,6 +342,45 @@ def decision(payload: dict, *, ask_fn=None) -> dict:
         return fallback(error.code)
 
 
+def guidance(*, home: Optional[Path] = None) -> dict:
+    """Read the current installed official guide; no inference, cache or writes."""
+    home = Path(os.path.abspath(home or codex_home()))
+
+    def read(relative, limit):
+        path = home / relative
+        for parent in (path, *path.parents):
+            if parent == home.parent:
+                break
+            info = parent.lstat()
+            if parent.is_symlink() or getattr(info, "st_file_attributes", 0) & 1024:
+                raise ValueError("linked guidance path")
+        if path.stat().st_size > limit:
+            raise ValueError("guidance exceeds its bound")
+        return path.read_bytes()
+
+    try:
+        manifest = json.loads(read("jev/installation.json", 2 * 1024 * 1024))
+        if manifest.get("source_dirty") or not re.fullmatch(r"[0-9a-f]{40}", manifest.get("source_commit", "")):
+            raise ValueError("guidance is not an installed clean release")
+        prefix = "skills/jev/references/official/typesafe-ai/"
+        source_raw = read(prefix + "source.json", 64 * 1024)
+        content = read(prefix + "guide.md", 260 * 1024)
+        for name, data in (("source.json", source_raw), ("guide.md", content)):
+            if manifest["files"].get(prefix + name) != hashlib.sha256(data).hexdigest():
+                raise ValueError("guidance differs from installed ownership")
+        source = json.loads(source_raw)
+        identity = {key: source[key] for key in ("repository", "commit")}
+        if (identity["repository"] != "typesafe-ai/skills" or source["directory"] != "skills/typesafe-ai"
+                or not re.fullmatch(r"[0-9a-f]{40}", identity["commit"])
+                or manifest.get("official_source") != identity):
+            raise ValueError("guidance source differs from the installed release")
+        return {"status": "ok", "source": "pinned_official", "official_source": identity,
+                "path": str(home / prefix / "guide.md"),
+                "sha256": hashlib.sha256(content).hexdigest(), "content": content.decode("utf-8")}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return fallback("official_guidance_unavailable")
+
+
 def _write_hook_receipt(home: Path, event: dict, receipt: dict) -> None:
     receipt = dict(receipt, observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event",
                    session_id=event.get("session_id") if isinstance(event.get("session_id"), str) else None,
@@ -441,7 +480,7 @@ def _bounded_hook(event: dict, deadline=3.5) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("select", "design", "decision", "hook", "hook-worker", "catalog", "status"))
+    parser.add_argument("command", choices=("select", "design", "decision", "guidance", "hook", "hook-worker", "catalog", "status"))
     parser.add_argument("--event-file", type=Path)
     args = parser.parse_args(argv)
     if args.command == "status":
@@ -450,6 +489,9 @@ def main(argv=None) -> int:
         return 0
     if args.command == "catalog":
         print(json.dumps({"catalog_scope": "local_scopes", "skills": local_catalog(codex_home(), Path.cwd())}))
+        return 0
+    if args.command == "guidance":
+        print(json.dumps(guidance(), ensure_ascii=False))
         return 0
     try:
         payload = json.loads(args.event_file.read_text(encoding="utf-8") if args.event_file else sys.stdin.read())

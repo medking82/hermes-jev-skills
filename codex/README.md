@@ -123,6 +123,14 @@ review. Only bounded reference data updates automatically; Codex adapter, hook, 
 permission, threshold and updater controls retain their existing review boundary. The
 official guide is subordinate to umbrella/user rules, including per-turn-only hook
 caching and existing retry policy. Official cookbook examples grant no tool permissions.
+When the main model enters a Jev workflow beyond unchanged skill/design dispatch, the
+umbrella directs it to run `scripts/jev.py guidance` and read the returned content.
+The command validates the installed manifest/source identity and guide hash, reads from
+disk on every call, and returns the actual guide with its official commit/hash. It makes
+no provider/network call and writes nothing; missing, linked or modified inputs fail open
+without changing routing. Future accepted reference updates therefore change the returned
+guidance, while protected adapter behavior remains reviewed code. Delivery of the content
+is verifiable; semantic compliance by a future model still needs task-specific evidence.
 Existing stop issues and local blocked state apply to both sources; adding this source
 never clears an earlier stop. A separately authorized implementation PR can install
 the initial accepted snapshot while retaining that stopped automatic-update state.

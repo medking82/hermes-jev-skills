@@ -9,6 +9,22 @@ One entrypoint for Jev decision support. The main model owns the task, writing,
 implementation and evidence. Jev answers narrow typed questions; it does not grant
 permission, generate commands, replace the main model or prove completion.
 
+## Read Current Official Guidance
+
+When entering a Jev workflow beyond unchanged skill/design dispatch, run the bundled
+`scripts/jev.py guidance` before planning or revising its questions, state, integration
+or evaluation. Read the returned `content` and apply the guidance relevant to the task;
+follow its linked references when needed. This local command reads the current installed
+official guide, checks its release ownership and returns its source commit and content
+hash. It performs no inference, network requests or writes. Run it afresh for a new task
+or after an official-reference update; an earlier summary is not the current guide.
+
+On `fail_open`, continue with the existing adapter/local guidance and disclose the
+unavailable official read when it affects the task. The guide remains subordinate to
+user choices, this umbrella and existing authorization. Routine automatic skill/design
+routing uses the tested adapter directly, without an extra guidance read or Jev call.
+Reading guidance does not authorize a disabled or explicit-only skill or any new action.
+
 ## Choose The Smallest Useful Decision
 
 1. Follow explicit user choices and already loaded skills. Handle trivial, deterministic
@@ -29,7 +45,7 @@ permission, generate commands, replace the main model or prove completion.
    file checks and permission decisions in code.
 5. For TypeSafe API integration, application features, question design or threshold
    evaluation, read [Build With TypeSafe](references/typesafe.md). It routes to the
-   pinned official skill and the relevant live docs. Routine Codex skill/design routing
+   current installed official skill and the relevant live docs. Routine Codex skill/design routing
    reuses the existing adapter and does not fetch API documentation on each turn.
 
 Run the Python interpreter available in the task environment. On Windows use the
