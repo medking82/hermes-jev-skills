@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Codex Adapter (Fork)
 
 - Route exact design-mode commands and narrowly recognized component polish in code,
   preserving ambiguous/mixed requests for Jev. Extend the OFF switch to bounded decisions
@@ -17,6 +17,8 @@
   all standalone Codex `jev-*` skills with recoverable runtime backups; preserve
   upstream workflows as references. Add offline behavior/installer regressions and
   a test-gated upstream integration workflow. Existing Hermes behavior is unchanged.
+
+## Unreleased
 
 - Integrate PR #49 (thanks @mxuanvan02) with explicit-effort preservation, disabled-reasoning and follow-up telemetry regressions. Retain the contributor commit in merge history; preserve manual `reasoning.effort` rather than replacing it. Include the numeric unknown-cost row count in daily stewardship summaries.
 
