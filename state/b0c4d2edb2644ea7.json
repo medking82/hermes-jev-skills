@@ -56,6 +56,7 @@
   "schema": 1,
   "seen_event_ids": [
     "event:updated:1792545164362032200",
-    "event:stopped:1792542198430801700"
+    "event:stopped:1792542198430801700",
+    "event:stopped:1792571099285644800"
   ]
 }
