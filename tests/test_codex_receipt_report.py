@@ -20,7 +20,9 @@ class ReportingTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.home = Path(temporary.name)
+        # macOS exposes its temp directory through /var; fixtures use its real
+        # path so the production linked-path guard stays strict and unchanged.
+        self.home = Path(temporary.name).resolve()
         self.runtime = self.home / "native-review-sync"
         self.runtime.mkdir()
         report.write(self.runtime / "reporting.json", dict(schema=1, device="a" * 16))
