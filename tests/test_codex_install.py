@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import os
@@ -69,6 +70,50 @@ class CodexInstallTests(unittest.TestCase):
         self.assertEqual(sum(len(g["hooks"]) for g in hooks), 2)
         config = self.installer.tomllib.loads((self.home / "config.toml").read_text())
         self.assertEqual(len(config["skills"]["config"]), 2 * len(self.installer.LEGACY_SKILLS))
+
+    def test_second_install_refreshes_accepted_official_references_without_invocation_changes(self):
+        self.run_install(True)
+        manifest_file = self.home / "jev/installation.json"
+        before = json.loads(manifest_file.read_text())
+        reference = self.home / "skills/jev/references/official/typesafe-ai"
+        unchanged = {name: (self.home / name).read_bytes() for name in (
+            "config.toml", "hooks.json", "skills/jev/SKILL.md", "skills/jev/agents/openai.yaml")}
+
+        # Provenance acceptance is covered by test_codex_official; supply only the
+        # next accepted reference package, without editing this checkout or Git.
+        next_package = self.installer.official.reference_files(self.repo)
+        source, source_files = self.installer.official.checkout(self.repo)
+        next_commit = ("b" if source["commit"] != "b" * 40 else "c") * 40
+        addition = b"\nAccepted official update: batch independent questions over the same state.\n"
+        source_files["SKILL.md"] += addition
+        next_source = self.installer.official.metadata(next_commit, source_files)
+        next_package["guide.md"] = next_package["guide.md"].replace(
+            source["commit"].encode(), next_commit.encode(), 1) + addition
+        next_package["source.json"] = (json.dumps(next_source, indent=2) + "\n").encode("utf-8")
+        with patch.object(self.installer.official, "reference_files", return_value=next_package):
+            report = self.run_install(True)
+
+        self.assertEqual(report["status"], "installed")
+        after = json.loads(manifest_file.read_text())
+        identity = {key: next_source[key] for key in ("repository", "commit")}
+        self.assertEqual(after["official_source"], identity)
+        self.assertEqual(report["official_source"], identity)
+        self.assertNotEqual(after["official_source"], before["official_source"])
+        self.assertEqual(json.loads((reference / "source.json").read_bytes()), next_source)
+        for name in ("guide.md", "source.json"):
+            with self.subTest(reference=name):
+                target = reference / name
+                relative = target.relative_to(self.home).as_posix()
+                self.assertEqual(target.read_bytes(), next_package[name])
+                self.assertEqual(after["files"][relative], hashlib.sha256(next_package[name]).hexdigest())
+                self.assertNotEqual(after["files"][relative], before["files"][relative])
+        for name, content in unchanged.items():
+            with self.subTest(unchanged=name):
+                self.assertEqual((self.home / name).read_bytes(), content)
+        self.assertEqual(after["hook_handler"], before["hook_handler"])
+        self.assertEqual([p.relative_to(self.home).as_posix()
+                          for root in (self.home / "skills", self.shared)
+                          for p in root.rglob("SKILL.md")], ["skills/jev/SKILL.md"])
 
     def test_local_runtime_drift_is_not_overwritten(self):
         self.run_install(True)

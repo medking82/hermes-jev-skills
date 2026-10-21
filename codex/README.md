@@ -33,6 +33,13 @@ Review/trust the new hook once in Codex `/hooks`. Do not bypass the trust review
 manufacture stored approval hashes. New or changed hook definitions require review.
 Source publication and a manual hook replay do not establish host activation.
 
+The reviewed Windows helper source is `codex/invoke-hidden.ps1`. It fixes the host
+Console/PowerShell output encoding and child stdout/stderr decoding to strict UTF-8,
+and pins Python UTF-8 mode and stream encoding. The `guidance` CLI also explicitly
+sets its stdout to strict UTF-8. This preserves Unicode guide content and its hash
+across a stale legacy-codepage host. Existing workstation helper updates are manual
+maintenance with a backup; the Jev installer never overwrites shared helper ownership.
+
 An already loaded Desktop session also needs its own app-server to reload the runtime
 configuration. Trust written through a separate CLI/app-server process is persisted but
 does not notify that Desktop session. Use the current Desktop's Hooks settings to apply
@@ -123,6 +130,14 @@ review. Only bounded reference data updates automatically; Codex adapter, hook, 
 permission, threshold and updater controls retain their existing review boundary. The
 official guide is subordinate to umbrella/user rules, including per-turn-only hook
 caching and existing retry policy. Official cookbook examples grant no tool permissions.
+When the main model enters a Jev workflow beyond unchanged skill/design dispatch, the
+umbrella directs it to run `scripts/jev.py guidance` and read the returned content.
+The command validates the installed manifest/source identity and guide hash, reads from
+disk on every call, and returns the actual guide with its official commit/hash. It makes
+no provider/network call and writes nothing; missing, linked or modified inputs fail open
+without changing routing. Future accepted reference updates therefore change the returned
+guidance, while protected adapter behavior remains reviewed code. Delivery of the content
+is verifiable; semantic compliance by a future model still needs task-specific evidence.
 Existing stop issues and local blocked state apply to both sources; adding this source
 never clears an earlier stop. A separately authorized implementation PR can install
 the initial accepted snapshot while retaining that stopped automatic-update state.

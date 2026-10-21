@@ -6,6 +6,11 @@ API integration or evaluation. The complete official guidance is bundled as
 [source commit/file hashes](official/typesafe-ai/source.json). It is reference material
 inside `/jev`; it creates no separately discoverable `typesafe-ai` skill.
 
+Run `scripts/jev.py guidance` as directed by the umbrella and read its returned content
+before designing or changing this workflow. Its commit/hash identifies the guide actually
+read, and a later official update is consumed on the next read without changing the
+adapter. A copied reference or an installer receipt alone is not consumption evidence.
+
 Read the relevant [live documentation index](https://docs.typesafe.ai/llms.txt) and follow
 its current URLs for the API/chosen SDK, primitive and closest cookbook before changing
 an API-dependent integration. The pinned guide supplies design guidance; live docs and
