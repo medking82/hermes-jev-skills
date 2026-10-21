@@ -153,6 +153,9 @@ or writes. Resolve the cause, then explicitly run the pinned `sync.py resume --r
 source advances, its transaction restores the runtime; source/runtime reconciliation is
 then manual, so no user changes are reset. Manually approved fork changes to maintenance
 controls require explicit re-enrollment after installing the new accepted main.
+Temporary network outages only defer the local check until its next ordinary schedule;
+they never install anything or add a retry loop. Authentication/permission failures remain
+stops, as do merge conflicts and failed tests.
 
 A Codex chat heartbeat monitors receipts/task health and reports new failures or completed
 updates once. It remains quiet when nothing changes, never resumes a stop and never

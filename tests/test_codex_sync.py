@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -285,3 +286,25 @@ class LocalUpdateTests(GitFixture):
         self.assertEqual(state["blocked"], receipt)
         self.assertEqual(receipt["status"], "stopped")
         self.assert_not_applied()
+
+    def test_offline_check_defers_without_latching_or_applying(self):
+        runtime = self.root / "runner"
+        runtime.mkdir()
+        upstream.write_json(runtime / "state.json", dict(self.state, blocked=None))
+        with patch.object(sys, "argv", ["sync.py", "run", "--runtime", str(runtime), "--apply"]), patch.object(self.sync, "update", side_effect=self.sync.DeferredUpdate("temporarily offline")):
+            self.assertEqual(self.sync.main(), 0)
+        self.assertIsNone(json.loads((runtime / "state.json").read_text())["blocked"])
+        self.assertEqual(json.loads((runtime / "last-run.json").read_text())["status"], "deferred")
+        self.assert_not_applied()
+
+    def test_transport_outage_defers_but_permission_denial_stops_without_fallback(self):
+        for message, expected in ((b"error connecting to api.github.com", self.sync.DeferredUpdate),
+                                  (b"HTTP 403: Resource not accessible", upstream.StopUpdate)):
+            result = subprocess.CompletedProcess(["gh"], 1, stdout=b"", stderr=message)
+            with self.subTest(message=message), patch.object(self.sync.subprocess, "run", return_value=result) as run:
+                with self.assertRaises(expected):
+                    self.sync.api("actions/workflows/" + upstream.WORKFLOW)
+                self.assertEqual(run.call_count, 1)
+        with patch.object(self.sync.subprocess, "run", side_effect=subprocess.TimeoutExpired("gh", 120)):
+            with self.assertRaises(self.sync.DeferredUpdate):
+                self.sync.api("actions/workflows/" + upstream.WORKFLOW)

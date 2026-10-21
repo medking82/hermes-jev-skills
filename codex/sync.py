@@ -24,18 +24,48 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def execute(args, *, cwd=None, env=None, timeout=120):
-    result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, timeout=timeout,
-                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+class DeferredUpdate(RuntimeError):
+    """No update attempted; the next ordinary schedule may check connectivity again."""
+
+
+def network_unavailable(stderr):
+    text = stderr.decode("utf-8", errors="replace").lower() if isinstance(stderr, bytes) else stderr.lower()
+    return any(marker in text for marker in ("could not resolve host", "couldn't resolve host", "dial tcp",
+        "connection timed out", "connection refused", "network is unreachable", "i/o timeout",
+        "tls handshake timeout", "could not connect to server", "failed to connect to github.com",
+        "error connecting to api.github.com", "http 502", "http 503", "http 504"))
+
+
+def execute(args, *, cwd=None, env=None, timeout=120, network=False):
+    try:
+        result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, timeout=timeout,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except subprocess.TimeoutExpired:
+        if network:
+            raise DeferredUpdate("GitHub request timed out; installed release retained") from None
+        raise
     if result.returncode:
+        if network and network_unavailable(result.stderr):
+            raise DeferredUpdate("GitHub temporarily unavailable; installed release retained")
         # Never copy arbitrary command output, credentials or test logs into receipts.
         raise StopUpdate(Path(args[0]).name + " " + args[1] + " failed (exit " + str(result.returncode) + ")")
     return result.stdout
 
 
 def api(endpoint, *, raw=False):
-    output = execute(["gh", "api", "--hostname", "github.com", "repos/" + FORK + "/" + endpoint])
+    output = execute(["gh", "api", "--hostname", "github.com", "repos/" + FORK + "/" + endpoint], network=True)
     return output if raw else json.loads(output)
+
+
+def fetch_main(repo):
+    try:
+        result = git(repo, "fetch", "--no-tags", "origin", "main", check=False)
+    except subprocess.TimeoutExpired:
+        raise DeferredUpdate("GitHub fetch timed out; installed release retained") from None
+    if result.returncode:
+        if network_unavailable(result.stderr):
+            raise DeferredUpdate("GitHub temporarily unavailable; installed release retained")
+        raise StopUpdate("fork fetch failed; inspect origin access without bypassing permissions")
 
 
 def safe_file(root, relative):
@@ -161,7 +191,7 @@ def update(state, *, apply, get=api, test=native_tests):
         raise StopUpdate("approved maintenance controls changed")
     saved = snapshots(home)
     workflow, runs = server_state(get)
-    git(repo, "fetch", "--no-tags", "origin", "main")
+    fetch_main(repo)
     candidate = commit(git(repo, "rev-parse", "FETCH_HEAD"))
     if before == candidate:
         return {"status": "unchanged", "commit": before}
@@ -190,7 +220,7 @@ def update(state, *, apply, get=api, test=native_tests):
         if clean_main(repo) != before or snapshots(home) != saved:
             raise StopUpdate("source or runtime configuration changed during validation")
         installed(home)  # Recheck every owned file immediately before mutation.
-        git(repo, "fetch", "--no-tags", "origin", "main")
+        fetch_main(repo)
         if git(repo, "rev-parse", "FETCH_HEAD") != candidate:
             raise StopUpdate("fork main moved during local tests")
         # A failed transactional installer leaves its backup and old runtime intact.
@@ -268,6 +298,10 @@ def main():
             write_json(runtime / "last-run.json", result)
             if result["status"] == "updated":
                 write_json(runtime / "last-update.json", result)
+    except DeferredUpdate as error:
+        result = {"status": "deferred", "reason": str(error), "event_id": str(time.time_ns()),
+                  "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        write_json(runtime / "last-run.json", result)
     except (OSError, ValueError, KeyError, TypeError, StopUpdate, subprocess.SubprocessError, zipfile.BadZipFile) as error:
         result = {"status": "stopped", "reason": str(error), "event_id": str(time.time_ns()),
                   "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
