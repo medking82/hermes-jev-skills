@@ -40,5 +40,7 @@
     }
   },
   "schema": 1,
-  "seen_event_ids": []
+  "seen_event_ids": [
+    "event:stopped:1792568485203980100"
+  ]
 }
