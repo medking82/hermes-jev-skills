@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "devices": [
+    "b0c4d2edb2644ea7",
+    "05d44e340fc84375"
+  ],
+  "canary_devices": [
+    "05d44e340fc84375"
+  ],
+  "kind": "jev"
+}

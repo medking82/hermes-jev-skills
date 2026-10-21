@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{16}$')][string]$Device,
     [string]$Repo = (Split-Path -Parent $PSScriptRoot),
     [string]$CodexHome = (Join-Path $env:USERPROFILE '.codex'),
     [string]$Python = (Get-Command python.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
@@ -21,23 +22,17 @@ if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
     throw 'Task already exists. Inspect it before explicitly replacing the approved enrollment.'
 }
 [IO.Directory]::CreateDirectory($runtime) | Out-Null
-foreach ($name in @('sync.py', 'upstream.py', 'official.py', 'invoke-hidden.vbs')) {
+foreach ($name in @('sync.py', 'upstream.py', 'official.py', 'invoke-hidden.vbs', 'report.py', 'receipt_cloud.py')) {
     $destination = Join-Path $runtime $name
     if (Test-Path -LiteralPath $destination) { throw "Existing updater file must be reviewed: $name" }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $destination
 }
 $quote = { param([string]$Value) "'" + $Value.Replace("'", "''") + "'" }
-$wrapper = @"
-Set-StrictMode -Version Latest
-`$ErrorActionPreference = 'Stop'
-try {
-    & $(& $quote $hidden) -FilePath $(& $quote $Python) -ArgumentList @('-B', $(& $quote (Join-Path $runtime 'sync.py')), 'run', '--runtime', $(& $quote $runtime), '--apply') -WorkingDirectory $(& $quote $Repo)
-    exit `$LASTEXITCODE
-} catch {
-    @{status='stopped'; reason='Jev updater launcher failed'; observed_at=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath $(& $quote (Join-Path $runtime 'launcher-error.json')) -Encoding utf8
-    exit 2
+@{schema=1;device=$Device} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $runtime 'reporting.json') -Encoding utf8
+$wrapper = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'invoke-sync.template.ps1'))
+foreach ($entry in @{RUNTIME=$runtime; HIDDEN=$hidden; PYTHON=$Python; REPO=$Repo; HOME=$CodexHome; KIND='jev'}.GetEnumerator()) {
+    $wrapper = $wrapper.Replace('@' + $entry.Key + '@', (& $quote $entry.Value))
 }
-"@
 [IO.File]::WriteAllText((Join-Path $runtime 'invoke-sync.ps1'), $wrapper, [Text.UTF8Encoding]::new($false))
 # Invoke the actual interpreter with no console; only non-secret enrollment metadata is returned.
 $start = [Diagnostics.ProcessStartInfo]::new()

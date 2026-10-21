@@ -187,10 +187,38 @@ Temporary network outages only defer the local check until its next ordinary sch
 they never install anything or add a retry loop. Authentication/permission failures remain
 stops, as do merge conflicts and failed tests.
 
-A Codex chat heartbeat monitors receipts/task health and reports new failures or completed
-updates once. It remains quiet when nothing changes, never resumes a stop and never
-performs model review or repairs. That in-app notification requires the Desktop app to
-be running; the deterministic Windows updater itself runs independently of the app.
+### Receipt Reporting And GitHub Alerts
+
+The existing task reports after the updater exits, including a sticky stop. It also
+checks its peer Native Review task and reports missing, disabled or unhealthy peer
+state. There is no additional local service or model-based health monitor. Registration
+requires a random 16-hex `-Device` pseudonym first approved in `receipt-policy.json`.
+Only that pseudonym, UTC timestamps, task state/result, event identity, commit, an
+allowlisted CI URL and closed reason codes leave the machine. No prompt, config, keys,
+raw exception text, paths or test logs are uploaded. This fork is public, so this
+allowlisted receipt metadata and its alert issues are public too.
+
+`report.py` submits a `codex-updater-receipt` repository dispatch using existing `gh`
+access without reading credentials. `submitted` in local `last-report.json` means
+accepted for processing; the state on the `updater-receipts` branch and completed
+receiver run establish delivery. Reporting denial is retained locally and uses no
+alternate tool or credential fallback. A later ordinary schedule may submit again;
+it never reruns a blocked update or failed tests. Source CI excludes the receipt branch.
+
+The trusted default-branch receiver saves each device's latest report and deduplicates
+event notifications against persistent issue markers, including closed issues. A new
+stop, launcher error, missing/disabled task or completed run missing a fresh receipt
+after five minutes creates one assigned alert. Running and matching sticky stops are
+excluded from stale detection. An old `enrolled` receipt is never installation proof.
+New `updated` events have one completion notice; unchanged reports stay quiet.
+
+A cloud watchdog runs every six hours. After three hours without reporting it emits
+one reporting-unavailable notice per outage (there can be up to nine hours' delay).
+It cannot distinguish an offline PC from both tasks being disabled, and does not infer
+tests failed, tests passed or an installation. Known deferred offline state stays quiet.
+Canary devices are separate and excluded from scheduled liveness checks. No receiver
+or alert resumes, installs, merges, closes a stop issue or repairs anything. The former
+chat heartbeat is retired only after live production receipts and deduplication pass.
 
 ## Validation
 
