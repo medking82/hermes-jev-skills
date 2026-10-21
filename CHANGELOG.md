@@ -119,7 +119,7 @@ Released by the daily Jev steward: 5 commit(s) on main since v0.22.1.
 
 - **One copy of each skill on a machine**: once Hermes is installed, Claude Code, Codex and `~/.agents` skill folders get symlinks to `<hermes root>/skills/jev/<skill>` instead of their own copies, so all three read the same files; copies remain the fallback without Hermes or symlinks. Tests cover link, re-run and no-Hermes cases.
 - **Field notes from a product review run on Jev** (`jev-browser-use`, `jev-frontier-work`, `jev-model-routing`): verify a "goal reached" pick with a Noul over page text (labels-only observation over-claimed: 0.73 vs 0.07); persona browsing as a UX review; machine-wide text helper for typing in `~/.config/jev/browser.json` (`claude-cli` provider uses the signed-in Claude Code CLI with no key; local servers need no key); citation-check a delegated report's `file:line` claims with `not_enough` first; script-file `--run` checks; `--no-changes-expected` for reviews; an `escalate` after a verified review that leaves a decision open goes to the person.
-- **A field cap of 0 or 1 now caps**: `privacy.redact` cut to `text[:limit // 2] + �?+ text[-(limit // 2):]`, and with `limit // 2 == 0` the tail slice is the whole text, so a `field_limits` entry of 0 or 1 sent the field in full. It now keeps no tail there.
+- **A field cap of 0 or 1 now caps**: `privacy.redact` cut to `text[:limit // 2] + … + text[-(limit // 2):]`, and with `limit // 2 == 0` the tail slice is the whole text, so a `field_limits` entry of 0 or 1 sent the field in full. It now keeps no tail there.
 
 **Changes and fixes**
 
@@ -138,7 +138,7 @@ Released by the daily Jev steward: 5 commit(s) on main since v0.22.0.
 - **Diagnosable skill fail-open**: local logs include only a bounded `reason_code`, not arbitrary error text. Added privacy-preserving regression coverage and [sanitized usage findings and remaining limits](docs/operational-follow-up-2026-10-01.md). Historical logs cannot establish failure causes retrospectively; no live settings or thresholds changed.
 - Added a live public GitHub star-history chart at the bottom of the README.
 
-- **Nous Portal in the model catalog** (`jev models list`, pool suggestions). models.dev has no Nous entry, so Nous-served models never reached the pools. `jev models �?--refresh` now reads the Nous inference API's OpenRouter-shaped `/models` and saves it; every other read, including routing on each turn, uses the saved copy and never the network. Without a saved copy it falls back to Hermes's `provider_models_cache.json` Nous list priced from models.dev's OpenRouter entry; with neither, no Nous provider is added. `:batch` ids and variable-priced (-1) routers are dropped, and a models.dev Nous entry, if one appears, wins. **What leaves the machine:** on refresh only, the Hermes Nous login from `auth.json` (`agent_key`, then `access_token`) goes as a bearer to `inference_base_url` + `/models`, and only when that URL is plain https on `inference-api.nousresearch.com` �?no userinfo, other host, port, query or fragment �?and redirects are refused so the bearer cannot follow one. An unreachable or unusable endpoint leaves the saved copy untouched. Rows are validated before they are saved: only rows that parse into a usable model (numeric non-negative prices, integer context, a sane `created` timestamp) replace the saved copy, a reply with none leaves it as it was, and a malformed row already on disk is dropped on read instead of breaking the catalog. **Pricing provenance:** prices from the Nous `/models` reply (fresh or saved) are Nous's own. In the Hermes fallback they are OpenRouter's list prices for the same model ids as models.dev records them �?an estimate of Nous's price, not a Nous quote �?and ids OpenRouter does not price are left out rather than guessed.
+- **Nous Portal in the model catalog** (`jev models list`, pool suggestions). models.dev has no Nous entry, so Nous-served models never reached the pools. `jev models … --refresh` now reads the Nous inference API's OpenRouter-shaped `/models` and saves it; every other read, including routing on each turn, uses the saved copy and never the network. Without a saved copy it falls back to Hermes's `provider_models_cache.json` Nous list priced from models.dev's OpenRouter entry; with neither, no Nous provider is added. `:batch` ids and variable-priced (-1) routers are dropped, and a models.dev Nous entry, if one appears, wins. **What leaves the machine:** on refresh only, the Hermes Nous login from `auth.json` (`agent_key`, then `access_token`) goes as a bearer to `inference_base_url` + `/models`, and only when that URL is plain https on `inference-api.nousresearch.com` — no userinfo, other host, port, query or fragment — and redirects are refused so the bearer cannot follow one. An unreachable or unusable endpoint leaves the saved copy untouched. Rows are validated before they are saved: only rows that parse into a usable model (numeric non-negative prices, integer context, a sane `created` timestamp) replace the saved copy, a reply with none leaves it as it was, and a malformed row already on disk is dropped on read instead of breaking the catalog. **Pricing provenance:** prices from the Nous `/models` reply (fresh or saved) are Nous's own. In the Hermes fallback they are OpenRouter's list prices for the same model ids as models.dev records them — an estimate of Nous's price, not a Nous quote — and ids OpenRouter does not price are left out rather than guessed.
 
 **Changes and fixes**
 
@@ -241,12 +241,12 @@ have decided and changes nothing.
 Tokens saved on the fleet by this release today: 0. The shadows cost about $0.07 a day and
 add no latency to a turn.
 
-- **Lanes: the smallest model that still gets it right** (`jev lane`, docs/lanes.md). After @0x_rody's "Claude �?Opus 5.5 �?Jev" orchestration pattern. Four lanes (`small`, `medium`, `high`, `escalate`) mapped to a real model and effort per host; Jev picks the first lane (policy `lane`: one request, a lane choice with an `other` escape, security and underspecification; ~0.5 confidence sends work up, not down) and decides each loop step (policy `loop-step`: continue / retry / verify / escalate / complete). Deterministic checks go first: `jev lane step --run <test> --scope <glob>` runs the tests, compiler, type checker or linter and reads `git diff`; failing checks, scope violations, unrun checks and security-sensitive changes are decided by code without a request. Escalation is one lane at a time and ends at a person. `complete` is refused while a check fails or the diff leaves its scope. Only the tail of a long check output reaches Jev.
+- **Lanes: the smallest model that still gets it right** (`jev lane`, docs/lanes.md). After @0x_rody's "Claude → Opus 5.5 → Jev" orchestration pattern. Four lanes (`small`, `medium`, `high`, `escalate`) mapped to a real model and effort per host; Jev picks the first lane (policy `lane`: one request, a lane choice with an `other` escape, security and underspecification; ~0.5 confidence sends work up, not down) and decides each loop step (policy `loop-step`: continue / retry / verify / escalate / complete). Deterministic checks go first: `jev lane step --run <test> --scope <glob>` runs the tests, compiler, type checker or linter and reads `git diff`; failing checks, scope violations, unrun checks and security-sensitive changes are decided by code without a request. Escalation is one lane at a time and ends at a person. `complete` is refused while a check fails or the diff leaves its scope. Only the tail of a long check output reaches Jev.
   - **Claude Code.** The installer now writes four subagents (`~/.claude/agents/jev-lane-*.md`, `model` + `effort` frontmatter) and a short delimited block in `~/.claude/CLAUDE.md` (backed up first; `--no-claude-md` skips it; `--uninstall` removes exactly the block and our agents, never a person's own file of the same name).
   - **Hermes.** `jev lane shadow` (cron) classifies new Kanban cards with `lane-kanban` and logs what it would choose; switch `lanes` (`off` by default, `shadow`, `on`), kill file `LANES_OFF`. `on` sets a card's model and effort through Hermes's own Kanban API, only for cards with no override. `jev lane shadow-report` joins the log to outcomes.
   - **Backtests on your own history.** `jev lane replay-build` reads a Kanban board and its session databases read-only (or Claude Code subagent transcripts with `--claude-projects`); `jev batch --policy lane` classifies; `jev lane replay-report` gives tokens by lane against today's default and always-top, first-try success with 95% intervals, and effort and model multipliers measured within each profile. `evals/lanes/replay_git.py` redoes past commits with Claude Code, lanes against always-top, success checked by the commit's own tests.
   - **Measured on one fleet** (2,357 Kanban cards, 2,656 Claude Code subagent runs): the article's thresholds read 64% of whole cards as `high`, and raising effort for them would have cost +52% tokens; within the same profile high effort cost 1.79× medium with no first-try gain, and low effort cost 2.14× (more turns). A smaller model used 0.49× the tokens without losing first-try success on the cards it was given. Calibrated (`lane-kanban`, luna for `small`, default effort for `high`), lanes are -1% against today's default and -32% against always-top, so the Hermes switch stays in shadow. On Claude Code subagents, lanes priced on the same tokens are -3.9% against always-Opus 5.5. In a controlled replay of 9 real commits, lanes (Jev chose Sonnet at medium for all 9) passed 9/9 at $1.60 against 9/9 at $3.27 for Opus at high (-51%); Haiku at low also passed 9/9 but cost $2.00, with twice the turns and tokens of Sonnet.
-- **`gate-task`: the command gate with the task** (`jev gate check --task …`, or `gate.check(task=�?`). The article's safety gate asked two things `gate-strict` does not: does this call fit the task the agent was given, and does it write somewhere other people see. A call that does not fit (�?0.6) or writes outside the machine (�?0.5) asks a person; destructive over 0.5 with serious severity is denied. Without a task nothing changes. Not yet backtested: the red-team set has no tasks.
+- **`gate-task`: the command gate with the task** (`jev gate check --task …`, or `gate.check(task=…)`). The article's safety gate asked two things `gate-strict` does not: does this call fit the task the agent was given, and does it write somewhere other people see. A call that does not fit (≥ 0.6) or writes outside the machine (≥ 0.5) asks a person; destructive over 0.5 with serious severity is denied. Without a task nothing changes. Not yet backtested: the red-team set has no tasks.
 
 - **Computer use on a Mac goes through Co-Agent first** (`skills/jev-computer-use/scripts/coagent_cu.py`, standard library, 11 tests). Co-Agent holds the Mac's permissions and runs the observe, Jev pick, act, verify loop natively, with per-action policy (no dialog for ordinary input, an approval ticket for purchases, deletes, sends, legal acceptance, sign-in and security settings, never credentials), occlusion and activation checks, OCR for apps with no accessibility tree, and named blockers. Measured on a Mac running the candidate build: Epic Games Launcher tab navigation 10/10, System Settings panes 10/10, a local web form filled and saved 10/10 (server-confirmed), Calculator 10/10; Jev took about 0.45 s per step. The cua-driver runner stays for machines without Co-Agent.
 
@@ -373,11 +373,12 @@ add no latency to a turn.
 - The audit finding that started it (TypeLLM/pijev, 2026-09-22): Jev's Choice probabilities
   wobble with the order the options are listed in, and the claimed fix is to ask the same
   question in several orders in ONE request and average the vectors. The A/B ran against this
-  repo's own labelled corpora �?[evals/permutation-averaging/SCORECARD-2026-09-22.md](evals/permutation-averaging/SCORECARD-2026-09-22.md)
-  �?and nothing was shipped.
+  repo's own labelled corpora — [evals/permutation-averaging/SCORECARD-2026-09-22.md](evals/permutation-averaging/SCORECARD-2026-09-22.md)
+  — and nothing was shipped.
 - `choose` (31 cases + 3 focused trap repeats, `scripts/calibrate_choose_permutations.py`):
   at the 0.65 floor every arm is the same 23/1/7/0. Order barely moves the pick (21/24
-  labelled cases: one distinct top across nine orders), and the Brier movement is one case �?  the known trap �?where averaging makes things worse from m=3 up. There the majority vote is
+  labelled cases: one distinct top across nine orders), and the Brier movement is one case —
+  the known trap — where averaging makes things worse from m=3 up. There the majority vote is
   wrong (9-0 twice in three repeats), so averaging amplifies it, and pijev's confidence swap
   (the winner's mean probability, not Jev's own) takes the trap from a declined 0.41-0.52 to
   an ACTING wrong 0.698/0.740 through the shipped floor. The m=2 "fix" was pair luck (2 of 9
@@ -385,7 +386,7 @@ add no latency to a turn.
 - skillpick stage 1 (14 cases, 459-skill catalog, `scripts/calibrate_skillpick_permutations.py`):
   every averaging variant identical to canonical (10 right / 0 wrong / 4 spurious / 0 missed);
   one lone random order beat both on spurious, and the spurious picks are order-robust
-  semantic near-matches �?stage 2's `needs_skill` gate already withholds those.
+  semantic near-matches — stage 2's `needs_skill` gate already withholds those.
 - `tests/test_permutation_averaging_eval.py` pins the replay math and the measured failure on
   the recorded trap numbers, so the non-adoption survives even when /tmp does not.
 
@@ -393,24 +394,24 @@ add no latency to a turn.
 
 - A live probe found `open the Sound settings pane and turn the volume down one notch` coming back
   `fallback / schema_mismatch`: the model wrote `press_key: "volume down"`, and `parse_response`
-  rejects the whole plan on a single step outside the vocabulary �?deliberately. The cost had
+  rejects the whole plan on a single step outside the vocabulary — deliberately. The cost had
   never been counted: two clean steps died with the third. New
-  `scripts/measure_plan_quality.py` counts it �?11 ordinary commands, one live call each, the raw
+  `scripts/measure_plan_quality.py` counts it — 11 ordinary commands, one live call each, the raw
   reply kept, and every fallback diagnosed down to the step that killed it:
   [evals/plan-quality/SCORECARD-2026-09-22-prompt-keys.md](evals/plan-quality/SCORECARD-2026-09-22-prompt-keys.md).
 - **Before: 20/22 planned (90%)**, both fallbacks the same command, both runs, killed by
   `press_key "volume down"`. The prompt's only `press_key` examples were `return`, `escape`, `tab`,
   `cmd+t`, so inventing a key name was the reasonable reading.
-- The first fix �?name the keys, and license leaving out a step that cannot be expressed �?took it
+- The first fix — name the keys, and license leaving out a step that cannot be expressed — took it
   to **22/22** and caused a reproducible regression: the screenshot step was dropped 2 runs out of
   2, because "leave that part out" reads as licence to drop anything. It also sent `press_key f11`
   for volume, since the list made `f1`-`f12` look available for it.
-- **Shipped wording: 33/33 planned across 3 runs** �?keys named, modifiers noted (`cmd+shift+3` is
+- **Shipped wording: 33/33 planned across 3 runs** — keys named, modifiers noted (`cmd+shift+3` is
   a screenshot this system can press), `f1`-`f12` scoped to their own meaning, no omission licence,
   and volume/brightness explicitly a click on the screen control or a menu path. Median 1181 ms
   against 1115 ms: ~90 extra prompt tokens, once per task, buying back a class of commands from an
   unconditional fallback.
-- `tests/test_plan_quality_eval.py` pins the wording offline �?the key list cannot be deleted, the
+- `tests/test_plan_quality_eval.py` pins the wording offline — the key list cannot be deleted, the
   omission licence cannot come back, the eval set stays free of send/delete commands (those belong
   to `enforce_never_send`), and the measurement never executes a step. The scorecard also records
   that this counts *plans*, not correct plans, with two spot-checked commands that would not do
@@ -419,18 +420,18 @@ add no latency to a turn.
 **Stakes and margin in `choose`: measured, and not shipped**
 
 - The floor is one number for every screen, so it pays for the wrong-click it prevents with
-  stalls on screens where a mistake is cheap. Two free signals could sharpen that split �?an
+  stalls on screens where a mistake is cheap. Two free signals could sharpen that split — an
   irreversible action the caller marked in the table, and the gap between the top choice and the
-  runner-up �?and both were priced rather than argued. New
+  runner-up — and both were priced rather than argued. New
   `scripts/calibrate_choose_stakes.py` runs the same 31 labelled cases the floor was calibrated on
   (imported, not re-typed) three times live, keeps the raw distributions, and replays 18 gate
   families offline: [evals/choose-match/SCORECARD-2026-09-22-stakes-and-margin.md](evals/choose-match/SCORECARD-2026-09-22-stakes-and-margin.md).
-- All 18 families reproduced the shipped floor **exactly** �?69 right, 1 stall, 21 declined, zero
+- All 18 families reproduced the shipped floor **exactly** — 69 right, 1 stall, 21 declined, zero
   wrong actions over 93 case-decisions, with no case where any family would have acted
   differently. On a screen holding nothing irreversible the correct answers came back at **0.92+**
   and the declines at 0.72 or below, so the band in which a gate could change its mind is empty.
 - The one case that ever sits in that band is the irreversible trap: `btn-save` (wrong) at
-  0.51-0.53 twice, then `btn-cancel` (right) at 0.42 �?confidence does not separate right from
+  0.51-0.53 twice, then `btn-cancel` (right) at 0.42 — confidence does not separate right from
   wrong there, so the floor is buying the asymmetry, not accuracy. A lower bar for reversible
   screens cannot help the case that matters, and a 0.30 margin rule withholds what confidence
   already withholds.
@@ -438,26 +439,26 @@ add no latency to a turn.
   `_floor()`'s docstring now points at the scorecard so this is not re-litigated from the same
   premise. What would reopen it is written down: a screen where the right action is one of two
   plausible controls and being wrong costs a click. `tests/test_choose_stakes_eval.py` keeps the
-  eval honest offline �?the bar, the reused case set, the stakes marking, and the unchanged floor.
+  eval honest offline — the bar, the reused case set, the stakes marking, and the unchanged floor.
 
 **`jev plan` posts over the same pooled connection, from the same one code path**
 
 - The planner is the one feature that calls a provider directly instead of asking Jev a question,
   and it built its own opener: a second TLS session per plan, measured at 522 ms against 245 ms
   for a borrowed connection. It was left as a known leftover because it runs once per task rather
-  than once per turn �?and leaving it also meant two request paths to keep honest.
+  than once per turn — and leaving it also meant two request paths to keep honest.
 - `client.post()` is now public for exactly that case, and `plan.py` calls it with **its own reply
   ceiling** (`MAX_RESPONSE_BYTES`, 200 KB, not the client's 1 MB): a feature that plans a handful
   of short objects should not be able to pull a megabyte. Error codes are unchanged, so `plan`'s
   fallback table (`timeout`, `network`, `http_*`, `response_too_large`) is what it always was.
-- Redirect refusal still holds �?a 3xx is an error, never a hop, so the bearer token cannot travel
-  to another origin �?and it is now exercised in one place instead of two: the live-server test in
+- Redirect refusal still holds — a 3xx is an error, never a hop, so the bearer token cannot travel
+  to another origin — and it is now exercised in one place instead of two: the live-server test in
   `test_connection_reuse.py`. New `PlanUsesTheSamePoolTests` proves the property against a real
   socket: two plan requests arrive on one connection.
 
 **A question's shape is now enforced where it is sent, not only where it is built**
 
-- The three rules that mattered were enforced by `client.choice`/`score`/`noul` �?which only
+- The three rules that mattered were enforced by `client.choice`/`score`/`noul` — which only
   guard the callers that use them. A question dict written by hand reached the wire and
   `_check_answer` died on it, or an answer was read against a question nobody had asked.
   `client.ask` now runs `client.check_questions` first, so the shape is settled before a
@@ -465,30 +466,30 @@ add no latency to a turn.
   the same checker, so the CLI and the library cannot drift apart.
 - The rules: a known `type`; non-empty `instructions` that do not merely repeat the question's
   own name (`{"id": "blocked_on_review", "instructions": "blocked on review?"}` asks nothing);
-  �? options for a choice, �? levels for a score; no criteria on a noul, where they would
+  ≥2 options for a choice, ≥2 levels for a score; no criteria on a noul, where they would
   never be sent; a state within `MAX_STATE_CHARS`, measured on the encoded JSON.
 - `tests/test_question_shape.py` (11 tests) sweeps every question the package's features
-  actually send �?routing, triage, mailbox, `choose`, compaction, search, rerank, skill
-  selection �?through a recording transport, re-derives the rules independently of the
+  actually send — routing, triage, mailbox, `choose`, compaction, search, rerank, skill
+  selection — through a recording transport, re-derives the rules independently of the
   checker, asserts a refused question never reaches the wire, and fails if any module outside
   `client.py` spells a question dict by hand (verified by mutation: adding one to `route.py`
   fails the test).
 - `docs/writing-a-jev-question.md` now states what is refused, next to the phrasing rule it
   already carried, and `tests/test_cli_help_examples.py` renders `jev ask --help`, pulls the JSON
-  out of it and runs every question in it through the same checker �?help text is a copy-paste
+  out of it and runs every question in it through the same checker — help text is a copy-paste
   surface, and an example the validator refuses is worse than no example. Verified by mutation:
   making the help's `severity` question repeat its own id fails the test.
 
 **Stage 2 was measured against its own removal, and it stays**
 
 - After the merged request, skill selection's verification request is the largest per-turn cost
-  left, and it is the last thing that can change the answer for free �?so the honest question was
+  left, and it is the last thing that can change the answer for free — so the honest question was
   whether to keep paying for it. New `scripts/calibrate_skill_stage2.py` runs 14 authored cases
   live once and replays both policies from the raw answers; the result is
   [evals/skill-pick/SCORECARD-2026-09-22.md](evals/skill-pick/SCORECARD-2026-09-22.md).
 - On this repo's ten skills, stage 1 alone got all ten real cases right and offered a skill on
   **all four** turns that want none (0.06-0.14 against a 0.02 floor). Stage 2 withheld all four.
-- On a real 379-skill catalog, stage 1 alone also made **two confident-wrong picks** �?`dogfood`
+- On a real 379-skill catalog, stage 1 alone also made **two confident-wrong picks** — `dogfood`
   at 0.96 and again at 0.94 for "click through the checkout flow in the browser", which stage 2
   corrected to `jev-browser-use`. A floor cannot catch that failure: it sees how sure the answer
   is, and this one was sure.
@@ -501,7 +502,7 @@ add no latency to a turn.
 
 **The connection was the cost: one TLS session per call, now one per thread that needs it**
 
-- A Jev call opened a new HTTPS connection every time �?`urllib.request.build_opener` per
+- A Jev call opened a new HTTPS connection every time — `urllib.request.build_opener` per
   request. Measured against the live API on the same question: **522 ms** with a fresh opener,
   **245 ms** through one reused `http.client` connection, 189 ms through httpx, which is what the
   official SDK pools. The handshake was over half of what a decision cost, and a Hermes turn paid
@@ -510,24 +511,24 @@ add no latency to a turn.
   library only): bounded, one borrower at a time so the parallel skill batches cannot interleave
   two responses on one socket, non-200 and 3xx responses dropped rather than reused, and a socket
   the server closed while idle costs one fresh connection, not a failed turn.
-- Redirects are still never followed �?a 3xx is an error, not a hop �?so the bearer token cannot
+- Redirects are still never followed — a 3xx is an error, not a hop — so the bearer token cannot
   travel to another origin. Every non-200 maps to the same error code it did before.
-- Measured live afterwards: `client.ask` median **522 ms �?178 ms**; a full Hermes turn
-  (routing + skill selection, merged) **1784 ms �?672 ms** �?3 requests down to 2, and 62% off
-  the wall clock �?with the same tier and the same skill on every turn measured.
+- Measured live afterwards: `client.ask` median **522 ms → 178 ms**; a full Hermes turn
+  (routing + skill selection, merged) **1784 ms → 672 ms** — 3 requests down to 2, and 62% off
+  the wall clock — with the same tier and the same skill on every turn measured.
 - `tests/test_connection_reuse.py` holds the four properties against a local HTTP server:
   reuse, no redirect hop, a bounded pool, and recovery from a closed idle socket. `jev plan`
   kept its own opener for a day (it runs once per task rather than once per turn) and now posts
-  through this same pool too �?see the entry above.
+  through this same pool too — see the entry above.
 
 **One request for routing and skill selection, and the measurement that made it correct**
 
 - A Hermes turn paid two Jev round trips before the model ran: skill selection on the pre-call
-  hook, routing on the request hook. Jev charges per request and not per question �?measured against
+  hook, routing on the request hook. Jev charges per request and not per question — measured against
   the live API with this fleet's 379-skill catalog: routing alone ~540 ms, stage 1 alone ~650 ms,
-  both in one request ~620 ms �?so the plugin now asks them together (`jevkit/turn.py`) and hands
+  both in one request ~620 ms — so the plugin now asks them together (`jevkit/turn.py`) and hands
   each answer to the module that owns its policy (`route.decide(answers=...)`,
-  `skillpick.pick(stage_one=...)`). Per turn, 1784 ms �?1380 ms and 3 requests �?2.
+  `skillpick.pick(stage_one=...)`). Per turn, 1784 ms → 1380 ms and 3 requests → 2.
 - The first version of the merge shipped the turn **twice** in the state (routing's `user_turn` plus
   a `turn` field for skill selection) and cost routing its calibration: difficulty confidence came
   back 0.50-0.62 where the standalone call gave 0.70-0.75, tripping the "unsure is not hard" guard
@@ -538,13 +539,14 @@ add no latency to a turn.
   paths gave the **same tier and the same skill on all eight**. `tests/test_turn.py` also asserts the
   two paths agree offline, so a future change that breaks it fails in CI rather than in routing.
 - The privacy boundary does not move: a private profile, a turn that looks sensitive, or `mode:
-  features` means **no merged request at all** �?asserted by call count, not by inspection. A merged
+  features` means **no merged request at all** — asserted by call count, not by inspection. A merged
   request that fails leaves nothing behind: no skill is suggested and routing asks for itself.
 - `/jev merge_requests off` is the kill switch; the log gains a `merged` line per turn that used it.
 
 **A reply that contradicts itself is refused, not averaged**
 
-- `client.ask` now enforces the rules every other validator of this API already enforces �?  jev-mcp's `validateChoiceAnswer` / `validateScoreAnswer` and jev-ultrafast's `validate_choice`: a
+- `client.ask` now enforces the rules every other validator of this API already enforces —
+  jev-mcp's `validateChoiceAnswer` / `validateScoreAnswer` and jev-ultrafast's `validate_choice`: a
   Choice's probabilities cover **exactly** the options offered and sum to 1, the chosen option is
   tied for the maximum, and a Score agrees with its own per-level distribution. Tolerances are
   taken from jev-mcp (`PROBABILITY_SUM_TOLERANCE = 0.01 + 1e-12`, `SCORE_MEAN_TOLERANCE =
@@ -553,19 +555,19 @@ add no latency to a turn.
   or a counter can tell "the wire broke" (`malformed`) from "the model contradicted itself". Every
   caller keeps the fail-open path it already had; no feature needed a new branch.
 - This closes a shape that reached `mailbox.py` in production: `probabilities: {}` was accepted and
-  read as a runner-up gap of 1.0 �?no evidence at all, reported as maximal confidence.
+  read as a runner-up gap of 1.0 — no evidence at all, reported as maximal confidence.
 - Score answers now carry their `legend` (filtered to the rubric) and a `spread_reported` flag, so a
   gate that needs a trustworthy spread can see when nothing was cross-checked instead of averaging
   over an absent one.
 - Measured before shipping. Three live calls with a six-option choice and a five-level rubric came
   back with every key present, mass exactly 1.0, the choice at the maximum, and a legend matching
-  the labels sent; a live smoke of `route` (easy �?simple, hard �?hard), `triage` and
+  the labels sent; a live smoke of `route` (easy → simple, hard → hard), `triage` and
   `compact-select` produced **0 refusals**. Every fake transport in `tests/` that described a
   partial or under-summed distribution was describing a reply the API cannot send, and now builds
   well-formed answers through `tests/_wire.py`.
 - Seen on live traffic since, and counted: **1 of 8** live routing calls later in the same session
   came back with a score that disagreed with its own distribution and was refused as
-  `invalid_response` / `score_matches_its_distribution` �?the exact rule that exists because a flat
+  `invalid_response` / `score_matches_its_distribution` — the exact rule that exists because a flat
   spread averaging to 2.73 was filed at level 4 of 5 in the mailbox incident. Nothing was averaged
   into a tier from it.
 - Held back from a 0.19.1 at the time so that entries below it would not ship in a release
@@ -574,7 +576,8 @@ add no latency to a turn.
 **A question that states one requirement answers one thing**
 
 - A vendor running Jev in production reported their largest accuracy jump came from one
-  sentence, not a better model. Describing a brief in full �?topic, tone, format, audience �?  made Jev read all of it as a hard requirement: 16 of 44 on their labelled set. Naming the
+  sentence, not a better model. Describing a brief in full — topic, tone, format, audience —
+  made Jev read all of it as a hard requirement: 16 of 44 on their labelled set. Naming the
   topic as the requirement and the rest as tie-breaking preferences: 33 of 44.
 - New [docs/writing-a-jev-question.md](docs/writing-a-jev-question.md): why an unlabelled
   attribute reads as a filter, the one sentence that fixes it, how it applies to Choice, Score
@@ -600,7 +603,7 @@ add no latency to a turn.
 **The plugin manifest reports the version you are actually running**
 
 - 0.19.0 bumped `jevkit/__init__.py` and left `hermes/plugin/hermes-jev/plugin.yaml` at
-  0.18.0, so the manifest Hermes reads �?and the number that ends up in a bug report �?was a
+  0.18.0, so the manifest Hermes reads — and the number that ends up in a bug report — was a
   release behind the code beside it. Every release before this one bumped both; nothing
   checked it, so it stayed wrong until someone read the two files side by side.
 - The manifest now says 0.19.0, and `tests/test_version_sync.py` holds the two together:
@@ -613,8 +616,8 @@ add no latency to a turn.
 - Stagehand's Act primitive accepts a Jev pick only after asking *which candidate is best*
   **and** *does any candidate match the goal at all* at 0.7, falling back to a language
   model otherwise. This repo gates on one number, `choose.MIN_CONFIDENCE`. The two failures
-  being separated are genuinely different �?"the best candidate is weak" versus "the right
-  action is not on this screen" �?so the second question was worth measuring rather than
+  being separated are genuinely different — "the best candidate is weak" versus "the right
+  action is not on this screen" — so the second question was worth measuring rather than
   dismissing.
 - `scripts/calibrate_choose_match.py` runs the 31 labelled cases `calibrate_choose.py`
   already carries, live, with both questions in **one** request, then replays every gate
@@ -622,11 +625,11 @@ add no latency to a turn.
   topped out at 0.45 while every other case started at 0.61.
 - It buys nothing for the decision the gate makes. At the shipped floor of 0.65 the
   single-question gate produced **zero wrong actions in all five runs**, so the case the
-  second question would catch (`Cancel this dialog without losing my work` �?*Save*, at
-  0.45-0.60 confidence) is already blocked �?at a 0.60 floor it slipped through once in
+  second question would catch (`Cancel this dialog without losing my work` → *Save*, at
+  0.45-0.60 confidence) is already blocked — at a 0.60 floor it slipped through once in
   five, which is exactly the margin 0.65 exists to cover. Used *alone* at any useful
-  threshold the match question acts on that case �?1 wrong action in every run, against the
-  floor's 0 �?and above 0.70 it only converts right answers into stalls.
+  threshold the match question acts on that case — 1 wrong action in every run, against the
+  floor's 0 — and above 0.70 it only converts right answers into stalls.
 - **Nothing about `choose` changed**: same one question, same floor, same fail-open. The
   finding, the tables and the honest limits (31 cases, and the floor was calibrated on
   them) are in `evals/choose-match/SCORECARD-2026-09-21.md`; 15 offline tests in
@@ -637,7 +640,8 @@ add no latency to a turn.
 
 - The plugin derived its skill roots from `HERMES_HOME`, and under a named profile that
   home can still be the default one. Jev therefore ranked the **default profile's** catalog
-  and named three skills the running profile could not load at all �?  `product-runtime-feature-audits`, `delegated-work-followthrough` and
+  and named three skills the running profile could not load at all —
+  `product-runtime-feature-audits`, `delegated-work-followthrough` and
   `macos-third-party-software-installation`. Each one sent the agent to a `skill_view` that
   answered "not found". All three exist on disk, which is why nothing caught it.
 - Roots now come from Hermes itself (`agent.skill_utils.get_all_skills_dirs`), so the
@@ -655,18 +659,18 @@ add no latency to a turn.
 
 A search run as a loop, with Jev taking the three decisions and nothing else.
 
-**`jev search` �?which results to open, whether that is enough, and which query next**
+**`jev search` — which results to open, whether that is enough, and which query next**
 
 - A research turn is one piece of writing and three decisions, and the decision agents get
   wrong is the last one: they stop when a result looks plausible, not when the question is
   answered. `jev search` takes a question, the results you already fetched, and up to five
-  candidate queries **you** wrote, and returns `decision` �?`answer`, `search_more`,
+  candidate queries **you** wrote, and returns `decision` — `answer`, `search_more`,
   `propose_queries`, `answer_from_what_we_have` or `unknown`.
 - Jev never writes a query. It picks one of yours or declines (`none` is always an option,
   so a closed set cannot force a bad pick). The writing stays with the model that is good
   at it.
 - Every result's title, URL and snippet goes through the same local, no-network screen the
-  memory filter uses before anything is sent �?with the URL *inside* the screened text on
+  memory filter uses before anything is sent — with the URL *inside* the screened text on
   purpose, because a link shaped to carry data off the machine is the one thing a search
   result can do that a memory passage cannot. `screening` says which check a result got,
   and `dropped_injection_ids` is never to be read.
@@ -679,13 +683,13 @@ A search run as a loop, with Jev taking the three decisions and nothing else.
 **Two defects the first live rounds found, both now tests**
 
 - **Everything irrelevant answered `unknown`.** Six Wikipedia results, every relevance
-  score under 0.5, gave an empty shortlist and `decision: unknown` �?the value that means
-  "Jev was not consulted" �?about a round where Jev had read all six. An agent following
+  score under 0.5, gave an empty shortlist and `decision: unknown` — the value that means
+  "Jev was not consulted" — about a round where Jev had read all six. An agent following
   the skill would carry on alone; the honest answer was `search_more`. Jev now says
   `sufficient: false` on that path and the note says what happened.
 - **The empty shortlist was the one case that got no recommendation.** The next-query pick
   only ran when there were passages to send, so "none of these results are relevant, run a
-  different query" �?the case where a recommendation is worth most �?was the case that got
+  different query" — the case where a recommendation is worth most — was the case that got
   none. The pick is now asked on that path too, with an empty shortlist and a state saying
   so.
 
@@ -697,8 +701,8 @@ Three things that were shipped but not performing: measured, then fixed.
 
 - It shipped in 0.14.0 keyed byte-for-byte on the command. Commands arrive by dictation.
   Measured on 22 repeats of six spoken commands, re-transcribed the ways a dictation engine
-  really varies them �?a capital on the first word, a capital on an app name, the full stop
-  it adds, a doubled space �?it hit **1 time in 22 (5%)**. Twenty-one repeats of something
+  really varies them — a capital on the first word, a capital on an app name, the full stop
+  it adds, a doubled space — it hit **1 time in 22 (5%)**. Twenty-one repeats of something
   the person had already said paid for a plan that was already on disk.
 - A second, normalised key sits beside the exact one: **64%** on the same corpus. The eight
   pairs that must never share a plan still miss, and every step still goes through
@@ -712,15 +716,15 @@ Three things that were shipped but not performing: measured, then fixed.
 **The mailbox sorter's dollar figure was made up**
 
 - It priced a batch at a flat 450 tokens per message. Measured against the live endpoint
-  with synthetic fixtures, a full-length message is **1,402** �?the constant was a third of
+  with synthetic fixtures, a full-length message is **1,402** — the constant was a third of
   reality. The summary now reports what the provider counted, falls back to characters this
   module measured itself sending, says which of the two it used, and reports `usd: None`
   when nothing could be counted rather than a confident zero.
 - **`automated` no longer libels a colleague.** It meant "the address looks like a robot's",
   which put a person writing from `support@` on the path to a disposal lane. It now means
   only what can be read off the address: a mailbox that cannot receive a reply (`noreply@`,
-  `mailer-daemon@`, `bounces@`). Shared mailboxes a team reads �?`support@`, `billing@`,
-  `orders@` �?get a fourth class, **`role`**.
+  `mailer-daemon@`, `bounces@`). Shared mailboxes a team reads — `support@`, `billing@`,
+  `orders@` — get a fourth class, **`role`**.
 - **A mail body is screened for text aimed at an agent**, the same screen the memory filter
   uses. A hit is **flagged**, never filed away and never dropped: the row keeps its lane,
   gains `injection`, and sets `needs_attention`. If a screened message disappeared, one
@@ -737,7 +741,7 @@ Three things that were shipped but not performing: measured, then fixed.
   counted and reported rather than silently dropped.
 
 **Each of these was checked by a second agent that tried to break it**, and each found real
-defects in the first attempt �?a sender-class fix that read every `Name <noreply@�?` header
+defects in the first attempt — a sender-class fix that read every `Name <noreply@…>` header
 as a person, a `classify` that raised `OverflowError` on a non-finite token count in a
 reply, a claimed measurement that was not true of the shipped code, and an injection screen
 that flagged 2 of 30 ordinary developer mails. All fixed before this was committed.
@@ -756,8 +760,8 @@ repo had anyone else looking at it. Reported by [@MrJev](https://github.com/MrJe
 - **A cached routing decision could send a turn to a model that cannot hold it.** The cache
   key left out the context size, and a hit returns before the model is picked, so the
   context-fit check and the "a large context never switches down" guard were both skipped.
-  The trigger is ordinary: a repeated short instruction �?a cron turn, "continue", a
-  template �?seen first in a small context and again once the session has grown. Measured:
+  The trigger is ordinary: a repeated short instruction — a cron turn, "continue", a
+  template — seen first in a small context and again once the session has grown. Measured:
   a 300,000-token turn routed to a model with a 32,000-token window. The key now carries a
   coarse context bucket, and a fingerprint of the pools, so editing `routing.json` takes
   effect without restarting the process.
@@ -778,11 +782,11 @@ repo had anyone else looking at it. Reported by [@MrJev](https://github.com/MrJe
 **Three claims that were not true**
 
 - `jev-skill-select` said "two requests". It is two round trips but `ceil(skills / 120) + 1`
-  requests, sent side by side �?for the 377-skill catalog in the README, five. Wall clock
+  requests, sent side by side — for the 377-skill catalog in the README, five. Wall clock
   and billed requests are not the same number, and it is the requests you pay for.
 - The README said routing is capped at 3,000 characters; `ask_chars` is 2,500.
 - The README now says plainly that in the default `redacted-text` mode, an automatically
-  routed turn sends its own text �?so the plugin's instruction to the agent about customer
+  routed turn sends its own text — so the plugin's instruction to the agent about customer
   data is not something the agent can act on, and `private_profiles` is the control.
 
 **Already fixed before the report arrived**, and worth recording because it was found twice
@@ -817,8 +821,8 @@ and CI red for eight runs on `opener=subprocess.run` bound as a default argument
   [Lorenzo DZ](https://github.com/Barba2k2)'s**, contributed as
   [PR #1](https://github.com/kerpopule/hermes-jev-skills/pull/1). The mechanism changed:
   that version prompted a chat model for JSON through `/chat/completions`, which returns an
-  LLM's guess wearing a confidence number it made up. Every threshold in this repo �?the
-  0.65 action floor, the 0.7 drop floor, "unsure is not hard" �?reads a calibrated
+  LLM's guess wearing a confidence number it made up. Every threshold in this repo — the
+  0.65 action floor, the 0.7 drop floor, "unsure is not hard" — reads a calibrated
   probability, so an imitation would have quietly broken all of them. OpenRouter serves the
   real Jev, so the feature works as asked without that trade.
 - A key that cannot be stored no longer closes the browser connection with no response. It
@@ -856,8 +860,8 @@ A mailbox sorter, ported from someone else's app and changed where our own numbe
 
 - **What it does.** `triage.py` answers the support question: how urgent, what kind, does a
   person have to decide. This answers the inbox question: of these thousands of messages,
-  which is even addressed to me as a person. Five lanes �?**needs reply / updates /
-  promotional / sales / spam** �?plus urgency, whether a human wrote it, and a
+  which is even addressed to me as a person. Five lanes — **needs reply / updates /
+  promotional / sales / spam** — plus urgency, whether a human wrote it, and a
   `needs_attention` flag. One Jev request per message.
 - **Where it came from.** [jevmail](https://github.com/fazlerocks/jevmail) (MIT, Copyright
   (c) 2026 Fazle Rahman) sorts Gmail through the Vercel AI Gateway in a Next.js app. The
@@ -873,27 +877,27 @@ A mailbox sorter, ported from someone else's app and changed where our own numbe
   the verdict, so a correction can be read against what Jev said.
 - **Changed because our measurements said so.** jevmail stores urgency as
   `round(score) + 1`. On a live bank alert Jev answered with a *flat* urgency distribution,
-  confidence 0.0, point estimate 2.73 �?which that formula stores as 4 of 5, a level nobody
+  confidence 0.0, point estimate 2.73 — which that formula stores as 4 of 5, a level nobody
   chose. Here the mass at "today" and "blocked" is what a caller acts on, the point estimate
   is reported as what it is, and a spread within 0.15 of the runner-up is marked unsure.
 - **The address is not sent, in any encoding it could have arrived in.** Not the mailbox,
-  not the local part �?and not the percent-encoded copy in an unsubscribe link, the
+  not the local part — and not the percent-encoded copy in an unsubscribe link, the
   base64'd copy in a tracking link, or a quoted-printable `=40`. Mail is decoded before it
   is screened, and URL query strings are dropped. The domain and a locally-derived
   `sender_class` (automated / list / person; a fourth class, role, arrived in 0.18.0) carry what the lane question needs; a message
-  that looks like it holds a secret is not sent at all �?that check reads the decoded text
-  too �?and is flagged for a person instead. Fail-open means a person looks, never that
+  that looks like it holds a secret is not sent at all — that check reads the decoded text
+  too — and is flagged for a person instead. Fail-open means a person looks, never that
   mail disappears: a Jev failure, a transport that crashes, a secret, a message with
   nothing to read, an unsure answer in any lane, or an answer outside the lane set all set
   `needs_attention` true and say why.
 - **Measured.** 11 real-shaped messages end to end: 435 ms p50, 562 ms p90, $0.00021
-  estimated for the batch, and the lane matched the hand label on all 11 �?including a
+  estimated for the batch, and the lane matched the hand label on all 11 — including a
   phishing mail read as spam, a colleague asking for a total read as needs_reply, and the
   credential one, which was never sent.
 - **Measured** is the module's own estimate, not a meter reading: `cost_estimate_usd` is
   `rows x 450 tokens x $0.042/M`, and `reply["usage"]` is not read.
 - Tested offline: 47 cases in `tests/test_mailbox.py`, every Jev reply faked **and the
-  credential lookup patched out** �?`client.ask` resolves the key before it consults the
+  credential lookup patched out** — `client.ask` resolves the key before it consults the
   transport, so the first version of this file read the developer's real Keychain and was
   red on any machine without one. Covered: the two failure directions (a human's mail
   filed under promotional, a newsletter that wakes someone up), every encoding that used
@@ -1076,7 +1080,7 @@ something they broke. Nothing here adds a capability you have to turn on.
   said unjudged ids stay selected; the code removes the ones the screen caught. An agent
   believes the description. Both now agree and a test pins the sentence to the behaviour.
 - **A confidential handoff ended by saying "Do not lose identifiers".** That sentence was
-  appended after the confidentiality rules whenever a previous capsule existed �?which is
+  appended after the confidentiality rules whenever a previous capsule existed — which is
   also where an old identifier is most likely to be hiding. Under `confidential=True` it
   now says the opposite.
 
@@ -1142,7 +1146,7 @@ something they broke. Nothing here adds a capability you have to turn on.
 - **The browser runner died the first time Jev chose to type.** The TypeSafe key fell back
   to the secret store; the text-model key only read the environment, and an agent's
   environment carries neither. It started cleanly and then failed with "TYPE_TEXT needs
-  TEXT_MODEL_API_KEY" �?on most sites at the very first action. Every test and demo had
+  TEXT_MODEL_API_KEY" — on most sites at the very first action. Every test and demo had
   been run from a shell where the key was exported by hand. It now falls back the same way.
 - **Real agents, one end goal each, timed.** DevBot drove *Pizza* to *Roman Empire* by links
   only: verified, 5 steps, 76.5 s wall clock. Donna drove System Settings to General then
@@ -1160,14 +1164,14 @@ Give it the end state, not the hops.
   current page"*. One sentence took Wikipedia from *Pizza* to *Roman Empire* links-only in
   12.6 s and *Banana* to *Albert Einstein* in 35 s, scrolling and routing itself.
 - **A goal needs the end state plus what counts as progress.** Without the second part it
-  stops on tick 1 �?correctly, since `BLOCKED` means nothing visible serves the goal. Same
+  stops on tick 1 — correctly, since `BLOCKED` means nothing visible serves the goal. Same
   task, one added sentence ("a related stepping-stone article counts as progress"):
   blocked with zero clicks became verified in 12.6 s. `jev-browser-use` now teaches this,
   and no longer claims ten steps is plenty (that race took 59).
 - **The desktop runner had no memory, so it could not pursue an end goal at all.** Ids
   were `click:<element_token>` and the driver reissues every token per observation, so
   nothing in `history` was ever still on the table. Asked to "open General, then Storage"
-  it clicked General ten times �?every click confirmed, none of them progress �?and
+  it clicked General ten times — every click confirmed, none of them progress — and
   failed in 22 s. Ids are now built from what the element *is*, history records what was
   clicked by name, and Jev is told which item is already selected. Same goal: two steps,
   7.8 s, the second at 0.98 confidence.
@@ -1180,8 +1184,8 @@ Give it the end state, not the hops.
 Ran it for real, against a real app, with a stopwatch. Most of this is what that found.
 
 - **The confidence floor is measured now, and it is 0.65, not 0.80.** `scripts/calibrate_choose.py`
-  replays 31 labelled cases �?ordinary actions, keyword and destructive-look-alike traps,
-  and screens where the only right move is not to act �?at every threshold. With regions
+  replays 31 labelled cases — ordinary actions, keyword and destructive-look-alike traps,
+  and screens where the only right move is not to act — at every threshold. With regions
   supplied, correct answers scored 0.93-0.99 synthetic and 0.74-0.90 on a live 26-row
   table. The single wrong answer ("cancel without losing my work" -> Save) was wrong nine
   runs in ten and never rose above 0.58: Jev knows when it is unsure. 0.60 clears that by
@@ -1201,7 +1205,7 @@ Ran it for real, against a real app, with a stopwatch. Most of this is what that
 - **"Wi\u2011Fi" is spelt with a non-breaking hyphen.** `--expect Wi-Fi` never matched, so
   a click that landed first time at 0.96 was called unverified and repeated five times.
 - **Rows below the fold are reported to Jev.** Asked for "Sound" with Sound scrolled out of
-  view it scored 0.33 and stalled �?correctly, since nothing on the table served the goal.
+  view it scored 0.33 and stalled — correctly, since nothing on the table served the goal.
   The scroll candidate now names what is further down.
 - **`decision_ms` timed the click, not the decision.** It made a 470 ms Jev call look like
   2.6 s. Split into `decision_ms` and `action_ms`: Jev is ~12% of a hop; the rest is the
@@ -1213,22 +1217,22 @@ Live result, installed copy, six System Settings panes: **3/6 verified in 44.9 s
 ## 0.10.0 (2026-09-19)
 
 - **The specialization axis was silently dead, and is restored.** Routing pools are two
-  dimensional �?`tiers[tier][specialty]` �?and `route` pays Jev for a Choice over
+  dimensional — `tiers[tier][specialty]` — and `route` pays Jev for a Choice over
   `general | coding | writing | research | vision` on every turn. But `suggest_tiers()`
   had been reduced to emitting only `general` and `vision`, so `_pick` looked for the
   `coding` pool, found none, and fell through to `general`. Nothing errored. The question
   was asked and billed on every single turn and could not change a single answer. The
   generator now produces a pool for every specialty, ordered by models that advertise the
-  skill in their own name �?a hint only ever *orders* a pool, never filters it, so a band
+  skill in their own name — a hint only ever *orders* a pool, never filters it, so a band
   with no specialist still routes.
 - **`route.dead_axis()` and a `jev doctor` warning.** A tier with no specialist pools is
   now named out loud: "the question is asked and paid for on every turn and cannot change
-  the answer". This class of bug �?a decision that is bought and discarded �?is invisible
+  the answer". This class of bug — a decision that is bought and discarded — is invisible
   by construction, so it needs a check rather than an error.
 - **`jev doctor` no longer calls the privacy mode "mode".** It reports `privacy_mode`,
   because the field read as the answer to "is routing on?" and has never been that.
-- **The installer shipped a plugin it could never install.** `hermes-handoff` �?the subject
-  of four changelog entries �?was unreachable because `install.py` hardcoded one plugin
+- **The installer shipped a plugin it could never install.** `hermes-handoff` — the subject
+  of four changelog entries — was unreachable because `install.py` hardcoded one plugin
   name. Plugins and scripts are now discovered from the tree, installed, symlinked into
   every profile and enabled together; `--uninstall` stays symmetric and leaves foreign
   files alone.
@@ -1238,7 +1242,7 @@ Live result, installed copy, six System Settings panes: **3/6 verified in 44.9 s
   the very next command the docs give you is the one that fails without it.
 - **All eight skill descriptions now fit the picker that reads them.** Every one exceeded
   the 200-character budget `skillpick` truncates to, so each lost its distinguishing tail
-  before Jev ever ranked it �?and the two delegation skills collapsed into near-identical
+  before Jev ever ranked it — and the two delegation skills collapsed into near-identical
   "delegate to another model" blurbs. Rewritten to front-load the discriminator, with a
   test importing `DESCRIPTION_CHARS` so the repo cannot ship a skill its own picker cannot
   read whole.
@@ -1261,11 +1265,12 @@ An audit of the day's six commits, and the follow-up fixes none of them logged.
   separate places; the command was renamed to `jev ladder` and the skill was never
   updated. In a repo whose premise is "an agent reads a SKILL.md and acts", an agent that
   loaded that skill errored three times with no way to discover the real name. Fixed, and
-  a test now asserts every `jev <subcommand>` in every skill is a real subcommand �?proven
+  a test now asserts every `jev <subcommand>` in every skill is a real subcommand — proven
   by reintroducing the bug and watching it fail.
 - **A privacy fix that traded one silent failure for another.** 0.9.0 stopped the phone
   rule eating UPS tracking numbers by widening its lookbehind to exclude letters. That
-  stopped `x8505550134`, `ext8505550134` and `Phone8505550134` being redacted at all �?  data loss swapped for a leak. The right fix protects the specific thing instead of
+  stopped `x8505550134`, `ext8505550134` and `Phone8505550134` being redacted at all —
+  data loss swapped for a leak. The right fix protects the specific thing instead of
   blunting the general rule: tracking numbers are held aside, the original phone rule runs
   untouched, and they are restored before truncation. Both directions are tested now.
 - **The release guard passed without scanning anything.** Outside a git checkout
@@ -1274,7 +1279,7 @@ An audit of the day's six commits, and the follow-up fixes none of them logged.
   than no guard; it now exits non-zero and says so.
 - **Version drift.** Code said 0.8.0 while the changelog announced 0.9.0, so
   `build_release.sh` would have shipped 0.9.0 code in an 0.8.0 zip.
-- **[`docs/turning-a-jev-feature-on.md`](docs/turning-a-jev-feature-on.md)** �?the
+- **[`docs/turning-a-jev-feature-on.md`](docs/turning-a-jev-feature-on.md)** — the
   operational rules behind all of the above: shadow first, benchmark your benchmark, a
   config key that can default to "off" will, absence of errors proves nothing, prove it
   where it runs, latency is the cost that lands on every turn, and ship the implementation
@@ -1284,59 +1289,59 @@ An audit of the day's six commits, and the follow-up fixes none of them logged.
 
 Triage went into a live pipeline, and a continuity rule turned out to forbid what handoff was doing.
 
-- **Confidential handoffs.** Some deployments are bound by a rule that continuity may carry *only* task, sources checked, missing evidence, owner and next action �?never customer detail. The default capsule breaks that rule by design: it is told to keep identifiers verbatim. `handoff_prompt(..., confidential=True)` replaces that instruction with a breadcrumb contract, and `compact.redact_capsule` is a mechanical second pass over the result. Both, because neither is enough: the regex is reliable but cannot know a surname is a customer, and the prompt can see but can be disobeyed.
-- **Confidentiality cannot switch itself off quietly.** A host may expose no plugin-config API at all, and asking one that does not returns the default �?which here means writing customer data against a rule forbidding it. A `CONFIDENTIAL` marker file in the handoff directory is the authority: one `ls` to verify, impossible to swallow in an exception handler. (This is the third silent-default failure in this project. The pattern is the lesson.)
+- **Confidential handoffs.** Some deployments are bound by a rule that continuity may carry *only* task, sources checked, missing evidence, owner and next action — never customer detail. The default capsule breaks that rule by design: it is told to keep identifiers verbatim. `handoff_prompt(..., confidential=True)` replaces that instruction with a breadcrumb contract, and `compact.redact_capsule` is a mechanical second pass over the result. Both, because neither is enough: the regex is reliable but cannot know a surname is a customer, and the prompt can see but can be disobeyed.
+- **Confidentiality cannot switch itself off quietly.** A host may expose no plugin-config API at all, and asking one that does not returns the default — which here means writing customer data against a rule forbidding it. A `CONFIDENTIAL` marker file in the handoff directory is the authority: one `ls` to verify, impossible to swallow in an exception handler. (This is the third silent-default failure in this project. The pattern is the lesson.)
 - **Under confidentiality, a failed writer writes nothing.** The normal fallback stores the raw transcript, because losing the thread is worse than a fat capsule. Under a confidentiality contract that fallback is the single worst outcome, so the capsule says "ask the person what they were working on" instead. An older jevkit that cannot honour the mode refuses rather than silently downgrading.
-- **[`docs/wiring-triage-into-a-live-pipeline.md`](docs/wiring-triage-into-a-live-pipeline.md)** and [`scripts/triage_adapter.py`](scripts/triage_adapter.py) �?the four rules that made it safe to edit something already carrying real traffic: fail open or don't ship; shadow before it steers; respect the emit contract you found; bound the work and prove it *in the scheduler*, not in your shell.
-- **A count cap is not a time cap.** The first wiring capped triage at 40 messages with a 6s timeout �?240s worst case, inside a router the wrapper kills at 180s. A kill mid-loop loses every message already marked seen, because dedupe is written before routing. `Budget` bounds messages *and* wall-clock, and reports what it skipped rather than truncating silently.
+- **[`docs/wiring-triage-into-a-live-pipeline.md`](docs/wiring-triage-into-a-live-pipeline.md)** and [`scripts/triage_adapter.py`](scripts/triage_adapter.py) — the four rules that made it safe to edit something already carrying real traffic: fail open or don't ship; shadow before it steers; respect the emit contract you found; bound the work and prove it *in the scheduler*, not in your shell.
+- **A count cap is not a time cap.** The first wiring capped triage at 40 messages with a 6s timeout — 240s worst case, inside a router the wrapper kills at 180s. A kill mid-loop loses every message already marked seen, because dedupe is written before routing. `Budget` bounds messages *and* wall-clock, and reports what it skipped rather than truncating silently.
 
 ## 0.8.0 (2026-09-19)
 
-- **`jev triage`** �?classify a message the moment it lands: act **now**, **today**, **queue**, or **ignore**. One Jev request per message (~400 ms, $0.00006) answers urgency, kind, whether a person must decide, and whether the sender is blocked. Cheap enough to run on every message, which is the point �?triage that only runs when someone remembers to look is not triage.
+- **`jev triage`** — classify a message the moment it lands: act **now**, **today**, **queue**, or **ignore**. One Jev request per message (~400 ms, $0.00006) answers urgency, kind, whether a person must decide, and whether the sender is blocked. Cheap enough to run on every message, which is the point — triage that only runs when someone remembers to look is not triage.
 - Code makes the routing call, not the model: Jev supplies calibrated readings and the thresholds are ours, in one readable function. Urgency is read from the probability mass at the top of the rubric, never the averaged score.
 - Fails toward attention: Jev down routes to `today`, an unsure answer never lands in `ignore`, and a message that looks like it carries a credential is **never sent** and goes straight to a person.
-- Tuned on 20 real support emails. Two rules earned their place there: a known customer reporting a problem they cannot work around is escalated even when they phrase it calmly ("cannot do anything with these" scored mid-rubric and sat in `today`), but only when the message also reaches "this week" urgency �?escalating low-urgency grumbles trains everyone to ignore the `now` pile.
+- Tuned on 20 real support emails. Two rules earned their place there: a known customer reporting a problem they cannot work around is escalated even when they phrase it calmly ("cannot do anything with these" scored mid-rubric and sat in `today`), but only when the message also reaches "this week" urgency — escalating low-urgency grumbles trains everyone to ignore the `now` pile.
 
 ## 0.7.1 (2026-09-19)
 
-Two bugs found by testing a live deployment, both of which fail silently �?the feature simply appears not to work.
+Two bugs found by testing a live deployment, both of which fail silently — the feature simply appears not to work.
 
 - **The lane key did not survive the hop it exists for.** The hook that writes a capsule receives `chat_id`; the hook that injects it receives `platform` and `sender_id` and *not* `chat_id`. Every conversation therefore resolved to the same key on the reading side, and no capsule would ever have matched. `lane_from_session()` now resolves the conversation from the session store, which both sides can reach, and the nightly script calls the plugin's own `lane_key` instead of carrying a second copy of the rule.
-- **Truncated lane keys could collide.** Real Teams conversation ids are 131 characters and share a structural prefix, so a 120-character truncation made uniqueness a matter of luck �?and a collision hands one customer's capsule to another. Long keys now keep a readable prefix plus a hash of the full key. Containment inside the handoff directory is asserted against hostile ids rather than inferred.
+- **Truncated lane keys could collide.** Real Teams conversation ids are 131 characters and share a structural prefix, so a 120-character truncation made uniqueness a matter of luck — and a collision hands one customer's capsule to another. Long keys now keep a readable prefix plus a hash of the full key. Containment inside the handoff directory is asserted against hostile ids rather than inferred.
 
 ## 0.7.0 (2026-09-19)
 
-- **`hermes/scripts/nightly-handoff.py`** �?close every live conversation once a night and leave tomorrow a capsule. Written for a deployment where one conversation had reached 2,255 messages and seventeen days, re-sent in full on every turn. Conservative by construction: only sessions with recent activity and real content, capped per profile, `--dry-run` touches nothing, and **a session is only closed after its capsule is safely written** �?losing the thread is worse than a large context.
+- **`hermes/scripts/nightly-handoff.py`** — close every live conversation once a night and leave tomorrow a capsule. Written for a deployment where one conversation had reached 2,255 messages and seventeen days, re-sent in full on every turn. Conservative by construction: only sessions with recent activity and real content, capped per profile, `--dry-run` touches nothing, and **a session is only closed after its capsule is safely written** — losing the thread is worse than a large context.
 - Resolves the Hermes CLI from the installation root even when `HERMES_HOME` points at a profile, which is how per-profile state is addressed. `HERMES_CLI` overrides.
 
 ## 0.6.1 (2026-09-19)
 
-- **Writer response shape** �?`call_llm` returns a `ChatCompletion` object on some hosts, not a dict. `(response or {}).get("choices")` raised `AttributeError`, which `build()` caught, so every capsule silently took the transcript fallback and looked like a bad summary rather than a broken one. `handoff.extract_text()` now handles a string, an OpenAI-shaped dict, an SDK object, and content-part lists. Caught on a live deployment, not in review.
+- **Writer response shape** — `call_llm` returns a `ChatCompletion` object on some hosts, not a dict. `(response or {}).get("choices")` raised `AttributeError`, which `build()` caught, so every capsule silently took the transcript fallback and looked like a bad summary rather than a broken one. `handoff.extract_text()` now handles a string, an OpenAI-shaped dict, an SDK object, and content-part lists. Caught on a live deployment, not in review.
 
 ## 0.6.0 (2026-09-19)
 
-- **`hermes-handoff` plugin** �?say `handoff` (or `/handoff`) and the session closes deliberately: Jev marks which turns must survive word for word, the host's existing auxiliary model writes a five-section capsule from that digest, and the next session's first turn receives it as context, once. An agent that never starts fresh drags every past turn into every future one; one that starts fresh with nothing repeats settled work. This is the third option.
+- **`hermes-handoff` plugin** — say `handoff` (or `/handoff`) and the session closes deliberately: Jev marks which turns must survive word for word, the host's existing auxiliary model writes a five-section capsule from that digest, and the next session's first turn receives it as context, once. An agent that never starts fresh drags every past turn into every future one; one that starts fresh with nothing repeats settled work. This is the third option.
 - Degrades rather than fails at every step: no Jev key means every turn is background and the capsule is still written; a writer that refuses, times out or answers something else falls back to the filtered transcript, which reads worse but loses nothing; a writer that raises never takes the session down.
-- `jevkit.compact` gained `handoff_prompt()` and `looks_like_capsule()`. Jev still cannot write �?it only decides what is worth writing about.
+- `jevkit.compact` gained `handoff_prompt()` and `looks_like_capsule()`. Jev still cannot write — it only decides what is worth writing about.
 
 ## 0.5.0 (2026-09-19)
 
-- **`jev spend`** �?the weekly cost report. What ran, what it cost, and what the same tokens would have cost on every alternative. Two things it exists to fix: a flat-fee seat looks free at the margin and so vanishes from cost reports (it is valued here at what its work would have cost metered, and told to earn its keep or be cancelled), and a per-token price is not a per-task price. The effective $/M column also exposes prompt caching, which the headline price hides.
+- **`jev spend`** — the weekly cost report. What ran, what it cost, and what the same tokens would have cost on every alternative. Two things it exists to fix: a flat-fee seat looks free at the margin and so vanishes from cost reports (it is valued here at what its work would have cost metered, and told to earn its keep or be cancelled), and a per-token price is not a per-task price. The effective $/M column also exposes prompt caching, which the headline price hides.
 - Counterfactuals are honest about their limit: they price the tokens that were actually produced, so a model that reasons more or less would not have produced the same ones. Stated in the output, not just the docs.
 
 ## 0.4.0 (2026-09-19)
 
 Frontier work: pick the seat, then watch the run.
 
-- **`jevkit/ladder.py` + `jev ladder`** �?an escalation ladder for hard work across paid frontier seats. A refusal is written to shared state, so one lane hitting a quota teaches all the others instead of forty agents rediscovering the same 429. A rung is skipped, never silently downgraded: when everything is full the decision says `forced` out loud rather than quietly serving hard work from a cheap model. Only the `hard` tier reaches it.
-- **`jevkit/supervise.py` + `jev supervise`** �?Jev watches delegated frontier runs. Code decides what is free to decide (has output arrived, is it repeating, has the process exited); Jev judges only what code cannot (is this meaningful progress, is it waiting on an answer, has it given up, is it finished); the expensive supervisor is woken only when one of those crosses a threshold. A Jev failure means keep waiting, never abort.
-- **Scheduled turns are now routed, not skipped.** A cron turn is a ~37,000-character standing contract wrapped around a `## Prompt` of ~660 characters �?the instruction is 1% of the envelope, which is why judging the envelope escalated everything. `unwrap()` pulls out the ask. Routing cron turns *without* unwrapping costs +115%; with it, +6%, and genuinely demanding jobs still reach the hard tier. Recurring jobs repeat their instruction verbatim, so decisions cache: 247 cron runs held 5 distinct asks.
-- **Privacy gate fix**: `AWS_SECRET_ACCESS_KEY`, `DB_PASSWORD`, `GITHUB_TOKEN` and other env-var-style secrets were not caught, because the pattern only matched `secret_key` �?the revealing word sits in the middle of the name. Found by a supervisor test; it affected every module.
+- **`jevkit/ladder.py` + `jev ladder`** — an escalation ladder for hard work across paid frontier seats. A refusal is written to shared state, so one lane hitting a quota teaches all the others instead of forty agents rediscovering the same 429. A rung is skipped, never silently downgraded: when everything is full the decision says `forced` out loud rather than quietly serving hard work from a cheap model. Only the `hard` tier reaches it.
+- **`jevkit/supervise.py` + `jev supervise`** — Jev watches delegated frontier runs. Code decides what is free to decide (has output arrived, is it repeating, has the process exited); Jev judges only what code cannot (is this meaningful progress, is it waiting on an answer, has it given up, is it finished); the expensive supervisor is woken only when one of those crosses a threshold. A Jev failure means keep waiting, never abort.
+- **Scheduled turns are now routed, not skipped.** A cron turn is a ~37,000-character standing contract wrapped around a `## Prompt` of ~660 characters — the instruction is 1% of the envelope, which is why judging the envelope escalated everything. `unwrap()` pulls out the ask. Routing cron turns *without* unwrapping costs +115%; with it, +6%, and genuinely demanding jobs still reach the hard tier. Recurring jobs repeat their instruction verbatim, so decisions cache: 247 cron runs held 5 distinct asks.
+- **Privacy gate fix**: `AWS_SECRET_ACCESS_KEY`, `DB_PASSWORD`, `GITHUB_TOKEN` and other env-var-style secrets were not caught, because the pattern only matched `secret_key` — the revealing word sits in the middle of the name. Found by a supervisor test; it affected every module.
 
 ## 0.3.0 (2026-09-19)
 
 - **`jev replay`**: offline evaluation. Replays logged turns through a policy and prices it against the baseline those turns actually ran on, so "is this router worth it" is arithmetic instead of an opinion. Only Jev is called; a few hundred turns costs cents.
-- Costs the **whole tool loop**, not one call. A median agent turn here is 8 API calls and ~192k input / 5.6k output tokens �?**97% input**. Ranking models by a blended price misranks them for agent work; rank by that real mix.
+- Costs the **whole tool loop**, not one call. A median agent turn here is 8 API calls and ~192k input / 5.6k output tokens — **97% input**. Ranking models by a blended price misranks them for agent work; rank by that real mix.
 - `jevkit.replay.compare` A/Bs several configs over the same turns. See [docs/measuring-a-router.md](docs/measuring-a-router.md).
 
 ## 0.2.5 (2026-09-19)
@@ -1346,7 +1351,7 @@ Routing policy `route-2`. In shadow mode on a real 41-profile fleet, 89% of judg
 - **An unsure Score averages to the middle of the rubric**, which sat on the hard cutoff. The router now reads the per-level probabilities Jev returns: hard needs P(substantial or expert) of 0.6, simple needs P(trivial) of 0.7. An unsure answer never buys the hard tier: a harmless unsure turn keeps its model, a risky one gets medium.
 - **Risk words set a floor of medium and no more.** They used to escalate to hard.
 - **Jev judges the ask, not the boilerplate.** A long turn is read as its opening plus, mostly, its end (`ask_chars`, 2500), and the risk-word check runs on that same slice.
-- **Template turns are not routed**: `skip_prefixes` (`[kanban]`, `[SESSION HANDOFF`, �? and `skip_session_prefixes` (`cron`). They wrap work Jev cannot see, so they keep the model their profile or job was configured with.
+- **Template turns are not routed**: `skip_prefixes` (`[kanban]`, `[SESSION HANDOFF`, …) and `skip_session_prefixes` (`cron`). They wrap work Jev cannot see, so they keep the model their profile or job was configured with.
 
 Replayed on 400 real turns: 316 template turns untouched, 48 unsure turns kept, 36 judged as 8 simple / 10 medium / 18 hard. The hard tier went from 89% of turns to 4.5%.
 
@@ -1363,7 +1368,7 @@ Replayed on 400 real turns: 316 template turns untouched, 48 unsure turns kept, 
 
 ## 0.2.2 (2026-09-19)
 
-- **Memory filter safety fix.** A passage the privacy gate refuses to send is never injection-checked, but it was still returned in `selected_ids` with no warning �?so text shaped like an injection could reach the agent as though it had been judged. Withheld passages are now screened locally (no network) for instruction shapes; matches are dropped into `dropped_injection_ids` and listed in the new `local_screen_ids`. Harmless withheld passages are still kept, so no memory is silently lost.
+- **Memory filter safety fix.** A passage the privacy gate refuses to send is never injection-checked, but it was still returned in `selected_ids` with no warning — so text shaped like an injection could reach the agent as though it had been judged. Withheld passages are now screened locally (no network) for instruction shapes; matches are dropped into `dropped_injection_ids` and listed in the new `local_screen_ids`. Harmless withheld passages are still kept, so no memory is silently lost.
 - `jev_memory_filter`'s tool description and `jev-memory` now say that `unjudged_ids` is *unchecked*, not verified.
 
 ## 0.2.1 (2026-09-19)
