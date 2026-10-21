@@ -2,7 +2,7 @@
 param(
     [string]$Repo = (Split-Path -Parent $PSScriptRoot),
     [string]$CodexHome = (Join-Path $env:USERPROFILE '.codex'),
-    [string]$Python = (Get-Command python.exe -CommandType Application -ErrorAction Stop).Source
+    [string]$Python = (Get-Command python.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,7 @@ $CodexHome = (Resolve-Path -LiteralPath $CodexHome).Path
 $Python = (Resolve-Path -LiteralPath $Python).Path
 $runtime = Join-Path $CodexHome 'jev-sync'
 $hidden = Join-Path $CodexHome 'bin/invoke-hidden.ps1'
-$pwshPath = (Get-Command pwsh.exe -CommandType Application -ErrorAction Stop).Source
+$pwshPath = (Get-Command pwsh.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $taskName = 'Codex Jev Update'
 foreach ($value in @($Repo, $CodexHome, $Python, $runtime, $hidden, $pwshPath)) {
     if ($value -match '["\r\n]') { throw 'Unsupported launcher path' }
