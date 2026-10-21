@@ -12,7 +12,7 @@ import json
 import os
 import sys
 import tempfile
-import time
+import threading
 import unittest
 from pathlib import Path
 
@@ -192,27 +192,61 @@ class ShadowQueue(unittest.TestCase):
         from jevkit.shadowq import ShadowQueue as Queue
 
         queue = Queue(maxsize=4)
-        release = __import__("threading").Event()
-        started = time.perf_counter()
-        queue.submit(release.wait, 5)
-        elapsed_ms = (time.perf_counter() - started) * 1000
-        self.assertLess(elapsed_ms, 5)
-        release.set()
+        release = threading.Event()
+        job_started = threading.Event()
+        job_finished = threading.Event()
+        submit_returned = threading.Event()
+        submitted, errors = [], []
+
+        def blocked_job():
+            job_started.set()
+            release.wait()
+            job_finished.set()
+
+        def submit():
+            try:
+                submitted.append(queue.submit(blocked_job))
+            except Exception as error:
+                errors.append(error)
+            finally:
+                submit_returned.set()
+
+        submitter = threading.Thread(target=submit, daemon=True)
+        submitter.start()
+        try:
+            # These are deadlock bounds, not a hosted runner latency benchmark.
+            self.assertTrue(submit_returned.wait(2), "submit waited for the blocked job")
+            self.assertEqual(errors, [])
+            self.assertEqual(submitted, [True])
+            self.assertTrue(job_started.wait(2), "the queued job never started")
+            self.assertFalse(job_finished.is_set())
+            self.assertFalse(release.is_set())
+        finally:
+            release.set()
+            submitter.join(2)
+        self.assertFalse(submitter.is_alive())
         self.assertTrue(queue.drain(2))
+        self.assertTrue(job_finished.is_set())
 
     def test_the_oldest_job_is_dropped_and_counted(self):
         from jevkit.shadowq import ShadowQueue as Queue
-        import threading
-
         queue = Queue(maxsize=2)
         gate_open = threading.Event()
+        job_started = threading.Event()
         seen = []
-        queue.submit(gate_open.wait, 5)          # occupies the worker
-        time.sleep(0.05)
-        for index in range(4):
-            queue.submit(seen.append, index)
-        self.assertEqual(queue.dropped, 2)
-        gate_open.set()
+
+        def occupy_worker():
+            job_started.set()
+            gate_open.wait()
+
+        queue.submit(occupy_worker)
+        try:
+            self.assertTrue(job_started.wait(2), "the worker never took the first job")
+            for index in range(4):
+                queue.submit(seen.append, index)
+            self.assertEqual(queue.dropped, 2)
+        finally:
+            gate_open.set()
         self.assertTrue(queue.drain(2))
         self.assertEqual(seen, [2, 3])
 
