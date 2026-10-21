@@ -4,6 +4,10 @@ Codex adapter changes are recorded in [Fork Notes](#codex-adapter-fork).
 
 ## Unreleased
 
+## 0.25.0 (2026-10-20)
+
+Released by the daily Jev steward: 15 commit(s) on main since v0.24.0.
+
 - Integrate PR #49 (thanks @mxuanvan02) with explicit-effort preservation, disabled-reasoning and follow-up telemetry regressions. Retain the contributor commit in merge history; preserve manual `reasoning.effort` rather than replacing it. Include the numeric unknown-cost row count in daily stewardship summaries.
 
 - Add the tested opt-in bridge for existing daily stewardship collectors, separating root install identity from published main and exposing common-ledger estimates/unknowns. Counterbalance future A/B requests, while retaining the first exploratory run and its documented ordering deviation.
@@ -24,6 +28,27 @@ Codex adapter changes are recorded in [Fork Notes](#codex-adapter-fork).
 - Add an opt-in native image/action comparison fixture and reproducible measured receipts. Jev chooses prevalidated action IDs; installed Hermes modules and paired Co-Agent execute verified synthetic clicks and plaintext typing. Retain failed replacement and image-abstention runs; measure explicit element fallbacks without lowering confidence. Add seven offline safety/accounting tests. No default driver, cloud switch or gateway change.
 
 - Fix #48 (thanks @zimu002): remove the unsupported `provides_middleware` manifest declaration. Hermes v0.22.2 and current hosts register `llm_request` via `PluginContext.register_middleware` in plugin code; the declaration only produced a warning and never enabled the middleware. Add a regression preserving code registration and a warning-free manifest.
+
+**New**
+
+- Add opt-in bounded whole-action tables and measured Arc loop pilot (672732c)
+- Add code-first Blender default and bounded Jev diagnostic advice (fe9ba8e)
+- Add opt-in Jev synthetic video-frame QA trial and measured receipts (4741719)
+- Default video QA to guarded Jev triage with full-review fallback (dea54a7)
+- Fix Jev request compatibility and truthful workflow reporting (f38d468)
+- Qualify capped synthetic Jev A/B and verify shared-home provenance (980c983)
+
+**Changes and fixes**
+
+- Record successful installed-selector qualification (cf0e82c)
+- Require verified plaintext field types and prove protected-field refusal (a8f6a61)
+- Document protected-field contract in candidate skill and changelog (98d1928)
+- Measure opt-in image choices on a real native Hermes desktop loop (eb86fa4)
+- fix: drop unsupported middleware manifest hint (#48) (b8f69fe)
+- fix: carry effort inside reasoning on the Codex Responses wire (ea7a566)
+- Retain video QA frame and write-ahead attempt receipts (10beadc)
+- Record actual 40-home video QA default readback (e9e391c)
+- Wire truthful daily stewardship and counterbalance future A/B collections (d70ae3f)
 
 ## 0.24.0 (2026-10-16)
 
