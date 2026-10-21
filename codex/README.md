@@ -33,6 +33,13 @@ Review/trust the new hook once in Codex `/hooks`. Do not bypass the trust review
 manufacture stored approval hashes. New or changed hook definitions require review.
 Source publication and a manual hook replay do not establish host activation.
 
+The reviewed Windows helper source is `codex/invoke-hidden.ps1`. It fixes the host
+Console/PowerShell output encoding and child stdout/stderr decoding to strict UTF-8,
+and pins Python UTF-8 mode and stream encoding. The `guidance` CLI also explicitly
+sets its stdout to strict UTF-8. This preserves Unicode guide content and its hash
+across a stale legacy-codepage host. Existing workstation helper updates are manual
+maintenance with a backup; the Jev installer never overwrites shared helper ownership.
+
 An already loaded Desktop session also needs its own app-server to reload the runtime
 configuration. Trust written through a separate CLI/app-server process is persisted but
 does not notify that Desktop session. Use the current Desktop's Hooks settings to apply

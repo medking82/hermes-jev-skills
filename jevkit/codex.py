@@ -491,6 +491,8 @@ def main(argv=None) -> int:
         print(json.dumps({"catalog_scope": "local_scopes", "skills": local_catalog(codex_home(), Path.cwd())}))
         return 0
     if args.command == "guidance":
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="strict", newline="\n")
         print(json.dumps(guidance(), ensure_ascii=False))
         return 0
     try:
