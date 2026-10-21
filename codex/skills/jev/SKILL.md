@@ -1,6 +1,6 @@
 ---
 name: jev
-description: Use Jev for ambiguous skill or design-mode selection, bounded choices, search-result filtering and repeated workflow decisions. Also use for /jev requests and Jev setup or diagnosis. Skip trivial or already settled choices; preserve explicit models, tools and task scope.
+description: Use Jev for ambiguous skill or design-mode selection, bounded choices, search filtering and repeated workflow decisions, or to build, evaluate and troubleshoot TypeSafe/Jev API workflows. Also use for /jev requests. Skip trivial or settled choices; preserve explicit models, tools and scope.
 ---
 
 # Jev For Codex
@@ -27,6 +27,10 @@ permission, generate commands, replace the main model or prove completion.
    The caller supplies the complete allowed set and the fallback. Batch independent
    questions through upstream `ask` when they share state. Keep arithmetic, timestamps,
    file checks and permission decisions in code.
+5. For TypeSafe API integration, application features, question design or threshold
+   evaluation, read [Build With TypeSafe](references/typesafe.md). It routes to the
+   pinned official skill and the relevant live docs. Routine Codex skill/design routing
+   reuses the existing adapter and does not fetch API documentation on each turn.
 
 Run the Python interpreter available in the task environment. On Windows use the
 workstation's hidden runner with the actual `python.exe`, never `py.exe`. The installed

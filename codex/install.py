@@ -16,6 +16,8 @@ import tomllib
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "codex"))
+import official
 from jevkit.codex import LEGACY_SKILLS, VERSION, user_skill_roots
 
 
@@ -56,6 +58,8 @@ def package(repo: Path) -> dict[str, bytes]:
                 continue  # No nested discovery entrypoints.
             files["references/upstream/" + name + "/" + relative] = content
     files["references/upstream/index.json"] = (json.dumps({"workflows": upstream_names}, indent=2) + "\n").encode()
+    for name, content in official.reference_files(repo).items():
+        files["references/official/typesafe-ai/" + name] = content
     return files
 
 
@@ -131,6 +135,8 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
     skill_root = home / "skills/jev"
     toolkit_root = home / "tools/hermes-jev-skills"
     payload = {skill_root / name: content for name, content in package(repo).items()}
+    official_info = json.loads(payload[skill_root / "references/official/typesafe-ai/source.json"])
+    official_source = {key: official_info[key] for key in ("repository", "commit")}
     for path in (repo / "jevkit").rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
             if path.is_symlink():
@@ -197,6 +203,7 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
                for p in (path, path.parent, path.parent.parent)) or path.resolve().parent != path.parent.resolve():
             raise ValueError("unsafe retirement target")
     report = {"status": "preview", "skill": str(skill_root), "toolkit": str(toolkit_root),
+              "official_source": official_source,
               "retire": sorted({p.name for p in retired}), "retire_paths": [str(p) for p in retired],
               "hook_event": "UserPromptSubmit",
               "warning": "Review and trust the new hook in Codex /hooks; host activation is not yet verified.",
@@ -237,6 +244,7 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
         owned = {p.relative_to(home).as_posix(): sha(b) for p, b in payload.items()
                  if p not in (hook_file, config_file)}
         manifest = {"adapter_version": VERSION, "files": owned, "hook_handler": new_handler,
+                    "official_source": official_source,
                     "backup": str(backup), "retired": retired_names,
                     "retired_paths": [str(p) for p in retired],
                     "source_commit": source_commit, "source_dirty": bool(dirty.stdout.strip())}

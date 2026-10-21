@@ -21,7 +21,7 @@ if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
     throw 'Task already exists. Inspect it before explicitly replacing the approved enrollment.'
 }
 [IO.Directory]::CreateDirectory($runtime) | Out-Null
-foreach ($name in @('sync.py', 'upstream.py', 'invoke-hidden.vbs')) {
+foreach ($name in @('sync.py', 'upstream.py', 'official.py', 'invoke-hidden.vbs')) {
     $destination = Join-Path $runtime $name
     if (Test-Path -LiteralPath $destination) { throw "Existing updater file must be reviewed: $name" }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $destination

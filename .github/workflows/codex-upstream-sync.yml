@@ -45,7 +45,7 @@ jobs:
             echo 'blocked=true' >> "$GITHUB_OUTPUT"
             echo 'Updates are stopped. Resolve and close the stop issue before resuming.' >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: Prepare The Exact Candidate Without Write Credentials
+      - name: Merge Hermes And Pin Official TypeSafe Without Write Credentials
         id: merge
         if: steps.gate.outputs.blocked != 'true'
         env:
@@ -161,7 +161,7 @@ jobs:
           cat > "$RUNNER_TEMP/stop.md" <<EOF
           @${GITHUB_REPOSITORY_OWNER} automatic Jev integration has stopped.
 
-          A conflict, protected-control change, failed/cancelled test or publication error prevented completion. No untested commit is published. The local updater also stops on this notice.
+          A conflict, invalid official TypeSafe reference, protected-control change, failed/cancelled test or publication error prevented completion. No untested commit is published. The local updater also stops on this notice. Both Hermes and official-reference updates remain stopped.
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
