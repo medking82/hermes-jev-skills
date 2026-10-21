@@ -1,22 +1,8 @@
 # Changelog
 
+Codex adapter changes are recorded in [Fork Notes](#codex-adapter-fork).
+
 ## Unreleased
-
-- Route exact design-mode commands and narrowly recognized component polish in code,
-  preserving ambiguous/mixed requests for Jev. Extend the OFF switch to bounded decisions
-  and correlate prompt-free receipts with actual Codex session/turn IDs and design modes.
-  Fix the Windows launcher command for both PowerShell and cmd.exe host shells.
-
-- Include the shared user `~/.agents/skills` scope in Codex discovery and standalone
-  Jev retirement. Keep matching legacy names in separate recoverable archives,
-  preserve unrelated skills and roll back both scopes together on failure.
-
-- Add the fork's Codex-only unified `$jev` entrypoint, bounded `UserPromptSubmit`
-  skill selection, speculative design-mode routing, exact-turn deduplication and
-  prompt-free receipts. Preserve explicit models, tools and scope. Archive/disable
-  all standalone Codex `jev-*` skills with recoverable runtime backups; preserve
-  upstream workflows as references. Add offline behavior/installer regressions and
-  a test-gated upstream integration workflow. Existing Hermes behavior is unchanged.
 
 - Integrate PR #49 (thanks @mxuanvan02) with explicit-effort preservation, disabled-reasoning and follow-up telemetry regressions. Retain the contributor commit in merge history; preserve manual `reasoning.effort` rather than replacing it. Include the numeric unknown-cost row count in daily stewardship summaries.
 
@@ -1385,3 +1371,21 @@ First release.
 - Hermes plugin `hermes-jev`: per-turn model routing through `llm_request` middleware, per-turn skill suggestion through `pre_llm_call`, three tools, `/jev` with per-profile and all-profile switches, decision log.
 - Seven agent-agnostic skills.
 - Installer for Hermes, Claude Code and Codex, with `--check` and `--uninstall`.
+
+## Codex Adapter (Fork)
+
+- Route exact design-mode commands and narrowly recognized component polish in code,
+  preserving ambiguous/mixed requests for Jev. Extend the OFF switch to bounded decisions
+  and correlate prompt-free receipts with actual Codex session/turn IDs and design modes.
+  Fix the Windows launcher command for both PowerShell and cmd.exe host shells.
+
+- Include the shared user `~/.agents/skills` scope in Codex discovery and standalone
+  Jev retirement. Keep matching legacy names in separate recoverable archives,
+  preserve unrelated skills and roll back both scopes together on failure.
+
+- Add the fork's Codex-only unified `$jev` entrypoint, bounded `UserPromptSubmit`
+  skill selection, speculative design-mode routing, exact-turn deduplication and
+  prompt-free receipts. Preserve explicit models, tools and scope. Archive/disable
+  all standalone Codex `jev-*` skills with recoverable runtime backups; preserve
+  upstream workflows as references. Add offline behavior/installer regressions and
+  a test-gated upstream integration workflow. Existing Hermes behavior is unchanged.
