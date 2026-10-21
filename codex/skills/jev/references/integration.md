@@ -42,7 +42,15 @@ Duplicate turn delivery
 can reuse a result; later turns are reevaluated. Disable network selection with
 `JEV_CODEX_OFF=1`; the main model continues normally.
 
-Upstream sync creates a reviewed integration branch/PR after offline checks. Publication,
-installed copies and model aliases are separate. Run the Codex installer from an accepted
-fork commit to update locally. Preview image/Box, new provider routes, local workers and
-browser automation are not enabled by a source sync.
+Upstream sync tests an exact merged candidate in isolated Linux/macOS/Windows jobs, then
+fast-forwards fork main only if all tests pass and main is unchanged. Protected Codex,
+hook, authorization and automation changes require manual review. A conflict or failed
+check opens a stop issue and blocks later integrations until explicitly resolved.
+
+The enrolled Windows updater runs hourly/at logon, accepts only a proven workflow commit,
+checks installed ownership, runs native checks and applies the approved installer without
+changing config or hooks. Local edits, missing files, changed trust definitions, failed
+tests and missing provenance stop it persistently. A chat heartbeat reports new stops or
+updates; it never clears a stop or bypasses trust. See `codex/README.md` for enrollment,
+receipts, recovery and runtime availability. Preview image/Box, new provider routes,
+local workers and browser automation are not enabled by source sync.

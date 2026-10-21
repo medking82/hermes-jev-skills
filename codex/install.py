@@ -200,6 +200,9 @@ def install(repo: Path, home: Path, python: Path, *, apply=False) -> dict:
               "retire": sorted({p.name for p in retired}), "retire_paths": [str(p) for p in retired],
               "hook_event": "UserPromptSubmit",
               "warning": "Review and trust the new hook in Codex /hooks; host activation is not yet verified.",
+              "config_changed": not config_file.exists() or config_file.read_bytes() != payload[config_file],
+              "hooks_changed": not hook_file.exists() or hook_file.read_bytes() != payload[hook_file],
+              "hook_definition_changed": old_handler != new_handler,
               "changed_files": sum(not p.exists() or p.read_bytes() != b for p, b in payload.items())}
     if not apply:
         return report
