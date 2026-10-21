@@ -101,17 +101,66 @@ shared hidden runner can consume it, then removes the file in `finally`.
 intact except the small `skillpick.ask_fn` injection seam; Codex-specific files live
 under `codex/`, `jevkit/codex.py` and `tests/test_codex*.py`.
 
-The upstream-sync workflow checks upstream daily, merges into a fixed integration
-branch, runs offline toolkit/Codex tests and the release checks, then opens/updates a PR.
-It does not execute downloaded installers, update local runtimes, approve its own PR,
-change endpoints/models or enable new features. Review the diff and passing checks before
-merging, then preview/apply the Codex installer from the accepted fork commit.
-Conflicts or failed checks stop publication. Other public Jev implementations are research
-inputs, never an automatic executable update source.
+`Codex Upstream Sync` runs daily at 02:23 UTC (10:23 MYT), or on manual dispatch.
+Confirm its actual state with `gh api repos/medking82/hermes-jev-skills/actions/workflows/codex-upstream-sync.yml`;
+the YAML schedule alone does not establish that GitHub has enabled it.
 
-GitHub's repository setting that allows Actions to create PRs must be enabled; GitHub
-groups that permission with review approval. This workflow only creates/updates the
-integration PR and never approves or merges it. Default workflow permissions remain read.
+The workflow prepares an exact candidate containing the upstream merge, then tests that
+same bundle on Linux/macOS (Python 3.9/3.13) and Windows (3.11/3.13). Candidate jobs have
+read-only tokens, no persisted checkout credentials and no user API keys. A separate job
+running the approved base code receives write permission only after every test passes.
+It rechecks bundle identity, ancestry, protected controls and unchanged fork main, then
+makes an ordinary fast-forward push of the tested commit. It never force-pushes or
+bypasses branch protection. Validation is inside this workflow: publication does not
+depend on a second workflow being triggered by `GITHUB_TOKEN`.
+
+Changes to `codex/`, `jevkit/codex*`, `tests/test_codex*`, `.github/`, `AGENTS.md`,
+`.gitattributes` or `.gitmodules` require manual maintenance. These include the umbrella,
+hook, authorization boundaries, installer and updater itself. Ordinary upstream toolkit
+and reference updates can pass automatically. Other public Jev implementations remain
+research inputs, never automatic executable update sources.
+
+A conflict, protected-control change, failed/cancelled test or publication failure creates
+one assigned **Jev Upstream Sync Stopped** issue with a run link. An open stop issue blocks
+subsequent integrations. Resolve the cause and explicitly close it to resume. If issue
+creation itself fails, the failed Actions run remains visible and the local updater also
+checks the latest main-branch run. `validate_current=true` exercises every pipeline job
+without inventing an upstream change or changing main when upstream is already included.
+
+### Local Windows Update
+
+After previewing/applying an accepted clean `main` commit with `codex/install.py`, run
+`codex/register-sync.ps1` in PowerShell 7. It enrolls the exact installed release and
+copies a pinned updater under `<codex-home>/jev-sync`. The **Codex Jev Update** Windows
+task runs at logon and hourly, under the current user's limited interactive token, with
+hidden VBS/PowerShell launchers and the actual `python.exe`. No console window, model,
+provider call, purchased credit or GPU worker is used by the updater. The computer must
+be awake and that Windows user logged in; missed runs start when available.
+
+The updater accepts only a descendant fork main with a successful exact-commit
+`jev-sync-result` artifact from the approved upstream workflow. It tests in a temporary
+clone and isolated profile before advancing clean local main and applying the approved
+transactional installer. Unknown/missing owned files, local edits, an unclean/non-main
+checkout, rewritten history, missing proof, changed controls or config/hook/retirement
+changes stop it. Config and hooks must stay byte-identical; existing disables,
+explicit-only policies and trust remain in force. The task never enrolls new controls
+or trusts a hook automatically. Existing installer backups are retained.
+
+`last-run.json` and `last-update.json` contain prompt-free receipts. A stop is persisted
+in `state.json`; later scheduled runs return that same receipt without retrying tests
+or writes. Resolve the cause, then explicitly run the pinned `sync.py resume --runtime
+<codex-home>/jev-sync` before the next normal run. If installer application fails after
+source advances, its transaction restores the runtime; source/runtime reconciliation is
+then manual, so no user changes are reset. Manually approved fork changes to maintenance
+controls require explicit re-enrollment after installing the new accepted main.
+Temporary network outages only defer the local check until its next ordinary schedule;
+they never install anything or add a retry loop. Authentication/permission failures remain
+stops, as do merge conflicts and failed tests.
+
+A Codex chat heartbeat monitors receipts/task health and reports new failures or completed
+updates once. It remains quiet when nothing changes, never resumes a stop and never
+performs model review or repairs. That in-app notification requires the Desktop app to
+be running; the deterministic Windows updater itself runs independently of the app.
 
 ## Validation
 
