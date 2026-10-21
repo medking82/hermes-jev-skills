@@ -1399,6 +1399,10 @@ First release.
 
 ## Codex Adapter (Fork)
 
+- Published receipt locations: [Device State](https://github.com/medking82/hermes-jev-skills/blob/updater-receipts/state/b0c4d2edb2644ea7.json)
+  and [Delivery Runs](https://github.com/medking82/hermes-jev-skills/actions/workflows/updater-receipts.yml).
+  Delivery is verified by matching the saved event ID, rather than submission alone.
+
 - Report allowlisted local updater receipts to GitHub with persistent event deduplication,
   peer task health and separate cloud liveness notices. Preserve sticky stops, exact-commit
   tests, authorization, explicit-only/disabled skills and existing upstream maintenance.
