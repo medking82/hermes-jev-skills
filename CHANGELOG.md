@@ -1399,6 +1399,16 @@ First release.
 
 ## Codex Adapter (Fork)
 
+- Adapter 0.2.0 follows the official TypeSafe skill-suggestion recipe: a shared
+  Choice/applicability first request, then top-three full descriptions and bounded
+  instruction excerpts with independent fit checks. Preserve the existing advisory,
+  deadline, provider, privacy and explicit-choice boundaries. Keep the community
+  selector unchanged; defer task-context deduplication pending evidence.
+- Add immutable prompt-free hook observations, correct duplicate-delivery attempt
+  accounting, body-aware same-turn cache invalidation and a paired synthetic selector
+  evaluation with offline regression tests. Distinguish no-match from service/evidence
+  failure and selector accuracy from observed skill loading or completed tasks.
+
 - Published receipt locations: [Device State](https://github.com/medking82/hermes-jev-skills/blob/updater-receipts/state/b0c4d2edb2644ea7.json)
   and [Delivery Runs](https://github.com/medking82/hermes-jev-skills/actions/workflows/updater-receipts.yml).
   Delivery is verified by matching the saved event ID, rather than submission alone.

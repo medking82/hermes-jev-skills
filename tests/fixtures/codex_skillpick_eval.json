@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "roster": [
+    {
+      "name": "skill-creator",
+      "description": "Create or update reusable agent skills, including SKILL.md instructions, trigger descriptions, supporting scripts and evaluation cases. Use when the user explicitly wants a reusable skill or changes to an existing skill. A request about a CLI, CI pipeline or script is not automatically a request to create a skill.",
+      "body": "# Skill Creator\nIdentify the reusable procedure and its invocation boundary. Inspect the existing skill if present. Write concise SKILL.md instructions and necessary resources, then validate the package and representative triggers. Only use this workflow when creating or modifying a reusable agent skill. For a normal repository bug, CLI repair or CI failure without a skill authoring request, work directly instead."
+    },
+    {
+      "name": "pages:manage-schedules",
+      "description": "Review a ChatGPT Space page and its schedules, recommend useful recurring work for that Space, and create, update or remove its scheduled automations. Requires a Space or Page as the target. Do not use for local Codex chat reminders or operating-system scheduled jobs.",
+      "body": "# Space Schedules\nRead the target Space and Page, then inspect existing schedules. Base changes on that Page's content and the user's requested timing. Apply only the requested Space schedule updates and report the result. Mentioning schedules or ChatGPT does not establish a Space target. Local Codex chat automations use the Codex automation workflow."
+    },
+    {
+      "name": "openai-docs",
+      "description": "Use for OpenAI products and Codex app operations, including local chat automations, reminders, scheduled tasks, setup and troubleshooting. Read applicable official references and use available Codex tools for authorized changes. Does not manage a ChatGPT Space Page's schedules, which use the dedicated Space schedule skill.",
+      "body": "# Codex Product Workflow\nDetermine the OpenAI product and requested operation. For a local Codex chat reminder, inspect existing automations and use the app automation tool to create or update the requested heartbeat. Preserve the current chat and notification preferences. For a Space Page schedule, use the dedicated Space workflow. A generic CLI or CI issue is not product troubleshooting solely because Codex is editing it."
+    },
+    {
+      "name": "documents:author",
+      "description": "Author a new Word document or report from notes, an outline or source material. Establish structure, draft the prose, create the .docx artifact, and render the result for layout review. Use for new document creation; use the document editor for tracked changes to an existing document. A document topic mentioned in a chat question does not require creating a file. Typical deliverables include workshop reports, project proposals, internal memos and readable summaries prepared as new Word files. Use the supplied facts without inventing evidence, organize sections for the intended reader, and check headings, page breaks, captions and tables after rendering. Preserve the user's requested length and format. When the user instead supplies an existing Word draft and asks for redlines, comments or tracked edits, choose documents:editor, even if the draft is called a report or proposal.",
+      "body": "# Document Author\nFor a new document, organize the supplied material, draft clear sections and create the requested Word artifact. Render and inspect pages before delivery. Use this workflow for a new report, memo or proposal. An existing draft with a request for tracked revisions belongs to the editor. Ordinary explanations in chat require no document artifact."
+    },
+    {
+      "name": "documents:editor",
+      "description": "Edit an existing Word document while preserving its structure, formatting and review history. Use for tracked changes, redlines, comments, or targeted revisions to a supplied draft. Inspect the original document before changing it and render affected pages to verify layout. Use document author when creating a new document from notes.",
+      "body": "# Document Editor\nRead the existing Word draft and identify the requested edits. Apply targeted revisions with tracked changes when requested, preserve unrelated content, and render affected pages to verify layout. Return the revised artifact. Do not start a replacement document or silently rewrite unrequested sections. A discussion of editing terminology alone does not invoke this workflow."
+    },
+    {
+      "name": "design",
+      "description": "Design and polish web or native app interfaces, including component feedback, spacing, accessibility and motion. Use for UI implementation, design audits and prototypes. Does not cover document layout, graphics or backend services. Match the requested interface operation rather than a product name or visual topic alone.",
+      "body": "# Interface Design\nInspect the interface and repository conventions. Make coherent improvements to the requested component, its responsive layout and interaction feedback. Check keyboard access and visual states. Use Title Case for visible English UI copy while preserving brand names. A backend bug, algorithm question or prose discussion does not need a UI design workflow."
+    },
+    {
+      "name": "spreadsheets:files",
+      "description": "Create, modify and analyze spreadsheet files such as XLSX and CSV, including formulas, tables, formatting and charts. Use when the requested deliverable is a spreadsheet or the user asks to operate on an existing workbook. Do not invoke merely because a request mentions a table, cells or spreadsheet terminology.",
+      "body": "# Spreadsheet Files\nInspect the workbook structure and formulas before editing. Apply changes to the specified sheets and ranges, preserve unrelated data, recalculate formulas and verify the resulting workbook. For a new spreadsheet, establish columns, formulas and readable formatting. A short explanation of CSV or a calculation in chat does not itself require a workbook workflow."
+    },
+    {
+      "name": "pdf:files",
+      "description": "Read, extract, create or inspect PDF files where page content or layout matters. Use for PDF extraction, form filling and page verification. Mentioning a PDF in a discussion does not call for file processing. New Word document authoring and tracked changes to Word drafts use the dedicated document skills.",
+      "body": "# PDF Files\nInspect the supplied PDF, extract its text or fill the requested fields, and render pages when layout needs verification. Keep changes within the requested scope and verify the output. Do not manufacture a PDF when the user only asks a conceptual question or explicitly requests an answer in chat."
+    }
+  ],
+  "cases": [
+    {"id":"ci-cli-en","language":"en","turn":"Fix the release CLI parser: the --dry-run option currently triggers deployment in our synthetic demo repository. Add a focused regression test.","expected":[],"tags":["no-match","skill-creator-ci-cli"]},
+    {"id":"ci-cli-zh","language":"zh","turn":"修复这个 demo repository 的 CI：Windows job 的路径 quoting 导致单元测试无法启动。只修改 workflow 和对应 regression test。","expected":[],"tags":["no-match","skill-creator-ci-cli"]},
+    {"id":"skill-author-en","language":"en","turn":"Create a reusable agent skill for auditing command-line argument handling, with a SKILL.md, invocation criteria and a small evaluation fixture.","expected":["skill-creator"],"tags":["first-load","skill-creator-ci-cli"]},
+    {"id":"skill-update-zh","language":"zh","turn":"更新现有的 agent skill，让 SKILL.md 明确说明何时执行 CLI audit，并补充两个 invocation example。","expected":["skill-creator"],"tags":["skill-creator-ci-cli"]},
+    {"id":"space-schedule-en","language":"en","turn":"In the selected ChatGPT Space Page for the synthetic reading club, change its existing weekly reading-digest schedule to Friday morning.","expected":["pages:manage-schedules"],"tags":["ambiguous","space-vs-local"]},
+    {"id":"local-schedule-zh","language":"zh","turn":"在当前本地 Codex chat 创建一个每天早上九点提醒我检查 demo build 的 automation；目标就是这个 chat。","expected":["openai-docs"],"tags":["ambiguous","space-vs-local"]},
+    {"id":"local-schedule-en","language":"en","turn":"Update this local Codex chat's existing reminder to run every Monday at 10 AM. It belongs to this chat and has no Space Page.","expected":["openai-docs"],"tags":["ambiguous","space-vs-local"]},
+    {"id":"space-schedule-zh","language":"zh","turn":"查看所选 ChatGPT Space Page 的现有 schedules，把该 Page 的每周摘要改到周二下午三点。","expected":["pages:manage-schedules"],"tags":["ambiguous","space-vs-local"]},
+    {"id":"document-author-en","language":"en","turn":"Turn these synthetic workshop notes into a new two-page Word report: we tested three paper prototypes, collected feedback, and chose the simplest layout. Deliver a .docx.","expected":["documents:author"],"tags":["ambiguous","first-load","author-vs-editor"]},
+    {"id":"document-editor-zh","language":"zh","turn":"修改已有的 Word draft：把开头两段改得简洁一些，保留原来的格式，并使用 tracked changes 交付修订文件。","expected":["documents:editor"],"tags":["ambiguous","author-vs-editor"]},
+    {"id":"document-editor-en","language":"en","turn":"Apply tracked edits to the supplied Word draft's introduction and leave a comment explaining the change. Preserve the remaining sections.","expected":["documents:editor"],"tags":["ambiguous","author-vs-editor"]},
+    {"id":"document-topic-zh","language":"zh","turn":"用两句话在 chat 解释 Word 的 tracked changes 和普通文字修改有何区别，不需要创建或修改文件。","expected":[],"tags":["no-match","mention-vs-operation","author-vs-editor"]},
+    {"id":"pdf-topic-en","language":"en","turn":"In one sentence, explain why a PDF usually keeps its layout across computers. Answer here in chat; no file is needed.","expected":[],"tags":["no-match","mention-vs-operation"]},
+    {"id":"pdf-operation-zh","language":"zh","turn":"提取所附合成 PDF 的各页正文，核对页面顺序，并返回整理好的文本。","expected":["pdf:files"],"tags":["first-load","mention-vs-operation"]},
+    {"id":"spreadsheet-operation-en","language":"en","turn":"Create an XLSX workbook for a fictional craft stall with item, quantity, unit price and total columns, formulas for totals, and a summary chart.","expected":["spreadsheets:files"],"tags":["first-load","mention-vs-operation"]},
+    {"id":"design-operation-zh","language":"zh","turn":"检查 demo 网页的结账表单，改善字段布局、keyboard focus 和提交后的反馈，并实现这些 UI 修改。","expected":["design"],"tags":["first-load","mention-vs-operation"]}
+  ]
+}
