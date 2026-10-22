@@ -1,0 +1,667 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "entrypoint-01",
+      "suite": "entrypoint",
+      "request": "请调整虚构库存 app 的 filter panel spacing、focus styles 和 button feedback，沿用现有 UI components。",
+      "expected": [
+        "design"
+      ],
+      "rationale": "design owns component polish and accessibility; generic UI styling is outside the Matt umbrella.",
+      "language": "zh",
+      "boundary": "positive"
+    },
+    {
+      "id": "entrypoint-02",
+      "suite": "entrypoint",
+      "request": "Ship the approved synthetic demo release to its documented staging destination now, using the repository's existing release workflow.",
+      "expected": [
+        "autotrigger"
+      ],
+      "rationale": "An explicit shipping request activates autotrigger and the repository-owned release path.",
+      "language": "en",
+      "boundary": "positive"
+    },
+    {
+      "id": "entrypoint-03",
+      "suite": "entrypoint",
+      "request": "只解释 release、deployment 和 rollback 三个 terms 的区别；今天没有 release 请求，也不改 repository。",
+      "expected": [
+        "none"
+      ],
+      "rationale": "Release discussion is explicitly excluded from autotrigger; no other listed primary entrypoint fits.",
+      "language": "zh",
+      "boundary": "negative"
+    },
+    {
+      "id": "entrypoint-04",
+      "suite": "entrypoint",
+      "request": "Review the synthetic parser branch against its spec and repository standards. This is an ordinary code review; no external native reviewer is requested.",
+      "expected": [
+        "skills"
+      ],
+      "rationale": "Matt code-review directly covers branch/spec/standards review; this benchmark requires explicit native-review authorization.",
+      "language": "en",
+      "boundary": "ambiguous"
+    },
+    {
+      "id": "entrypoint-05",
+      "suite": "entrypoint",
+      "request": "请用 $native-review 对已冻结的虚构 cache diff 做一次 independent review，报告 findings。",
+      "expected": [
+        "native-review"
+      ],
+      "rationale": "The user explicitly names native-review for a frozen diff, satisfying the benchmark's opt-in boundary.",
+      "language": "zh",
+      "boundary": "positive"
+    },
+    {
+      "id": "entrypoint-06",
+      "suite": "entrypoint",
+      "request": "Use /jev to design a recurring semantic choice over the caller-owned labels accept, revise, and defer for synthetic article pitches.",
+      "expected": [
+        "jev"
+      ],
+      "rationale": "Explicit /jev plus a recurring closed-set semantic decision fits the Jev entrypoint.",
+      "language": "en",
+      "boundary": "positive"
+    },
+    {
+      "id": "entrypoint-07",
+      "suite": "entrypoint",
+      "request": "请找出可安装的 watercolor illustration skills，并说明如何安装；不是编写 skill，也不是使用 Matt collection。",
+      "expected": [
+        "none"
+      ],
+      "rationale": "Listing or installing unrelated skills is explicitly outside skills; none of the six offered entrypoints owns this request.",
+      "language": "zh",
+      "boundary": "negative"
+    },
+    {
+      "id": "entrypoint-08",
+      "suite": "entrypoint",
+      "request": "Diagnose why the synthetic notification worker intermittently duplicates events. The ticket mentions a future UI redesign, but this request concerns only the backend regression.",
+      "expected": [
+        "skills"
+      ],
+      "rationale": "Hard intermittent backend failures map to diagnosing-bugs; incidental UI wording does not make design primary.",
+      "language": "en",
+      "boundary": "ambiguous"
+    },
+    {
+      "id": "design-01",
+      "suite": "design",
+      "request": "$design：只改善虚构 settings form 的 spacing、contrast 和 keyboard focus，保留现有 library 与 layout，不要 variants 或 stress test。",
+      "expected": [
+        "emil-design-eng"
+      ],
+      "rationale": "General component polish is the default; no explicit-only activity is authorized.",
+      "language": "zh",
+      "boundary": "negative",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations"
+      ]
+    },
+    {
+      "id": "design-02",
+      "suite": "design",
+      "request": "The existing web drawer spring drops frames when many cards are visible. Restore smooth playback within the frame budget without adding new transitions.",
+      "expected": [
+        "animation-performance"
+      ],
+      "rationale": "Existing jank and frame-budget repair are more specific than implementing new web motion.",
+      "language": "en",
+      "boundary": "ambiguous",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations"
+      ]
+    },
+    {
+      "id": "design-03",
+      "suite": "design",
+      "request": "虚构 Expo app 需要一个新的 swipe-to-dismiss gesture，结束时触发 haptic feedback；请实现 React Native interaction。",
+      "expected": [
+        "animate-expo"
+      ],
+      "rationale": "React Native/Expo motion, gestures and haptics select the platform-specific animate-expo mode.",
+      "language": "zh",
+      "boundary": "positive",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations"
+      ]
+    },
+    {
+      "id": "design-04",
+      "suite": "design",
+      "request": "What is the animation term for an element moving beyond its target and then settling back? I only need the name of the effect.",
+      "expected": [
+        "animation-vocabulary"
+      ],
+      "rationale": "Naming a described effect belongs to animation-vocabulary and does not authorize implementation.",
+      "language": "en",
+      "boundary": "positive",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations"
+      ]
+    },
+    {
+      "id": "design-05",
+      "suite": "design",
+      "request": "请用超长 synthetic names、空列表和大量 rows stress-test 现有 table UI，报告 data edge cases，先不要修复。",
+      "expected": [
+        "break-ui"
+      ],
+      "rationale": "Explicit worst-case UI data testing authorizes break-ui; its contract stops at failures and proposed fixes.",
+      "language": "zh",
+      "boundary": "positive",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations",
+        "break-ui"
+      ]
+    },
+    {
+      "id": "design-06",
+      "suite": "design",
+      "request": "Critique the motion in this synthetic animation diff for timing, interruption and reduced-motion behavior. Return design findings; do not implement changes.",
+      "expected": [
+        "review-animations"
+      ],
+      "rationale": "An explicit animation-diff critique selects review-animations, even though general motion audits overlap.",
+      "language": "en",
+      "boundary": "ambiguous",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations",
+        "review-animations"
+      ]
+    },
+    {
+      "id": "design-07",
+      "suite": "design",
+      "request": "请比较适用于虚构 React dashboard 的 UI libraries，按 keyboard accessibility 和 theme integration 给 dependency recommendation。",
+      "expected": [
+        "pick-ui-library"
+      ],
+      "rationale": "Explicit UI library comparison authorizes pick-ui-library.",
+      "language": "zh",
+      "boundary": "positive",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations",
+        "pick-ui-library"
+      ]
+    },
+    {
+      "id": "design-08",
+      "suite": "design",
+      "request": "Explore three different layouts for a synthetic task board and let me switch between them with a visual picker before choosing one.",
+      "expected": [
+        "prototype"
+      ],
+      "rationale": "Explicit UI variants behind a visual picker authorize the design prototype mode.",
+      "language": "en",
+      "boundary": "positive",
+      "allowed": [
+        "emil-design-eng",
+        "animate",
+        "animate-expo",
+        "animation-performance",
+        "animation-vocabulary",
+        "apple-design",
+        "mobile-native",
+        "ask-sonner",
+        "write-swift",
+        "find-animation-opportunities",
+        "improve-animations",
+        "prototype"
+      ]
+    },
+    {
+      "id": "matt-01",
+      "suite": "matt",
+      "request": "$skills：虚构 scheduler 的 integration test 偶发卡住，root cause 未知；先建立可重复 evidence 并定位原因。",
+      "expected": [
+        "diagnosing-bugs"
+      ],
+      "rationale": "The catalog assigns hard intermittent failures and root-cause diagnosis to diagnosing-bugs.",
+      "language": "zh",
+      "boundary": "positive",
+      "invoked": true
+    },
+    {
+      "id": "matt-02",
+      "suite": "matt",
+      "request": "$skills: Implement the agreed rule that an empty synthetic cart cannot be checked out, using red-green-refactor and a failing behavior test first.",
+      "expected": [
+        "tdd"
+      ],
+      "rationale": "Explicit test-first behavior work selects tdd over general scoped implementation.",
+      "language": "en",
+      "boundary": "ambiguous",
+      "invoked": true
+    },
+    {
+      "id": "matt-03",
+      "suite": "matt",
+      "request": "$skills：请完成一个已经定稿的 ticket：为虚构 catalog 的 list endpoint 加 cursor pagination，acceptance criteria 和 API spec 都已给出。",
+      "expected": [
+        "implement"
+      ],
+      "rationale": "One settled scoped ticket maps to implement, not execution of an entire spec's ticket graph.",
+      "language": "zh",
+      "boundary": "positive",
+      "invoked": true
+    },
+    {
+      "id": "matt-04",
+      "suite": "matt",
+      "request": "$skills: Our fictional reminder feature requirements are settled. Synthesize the discussion into a spec and publish it to the configured issue tracker; no new interview is needed.",
+      "expected": [
+        "to-spec"
+      ],
+      "rationale": "The catalog defines to-spec as synthesis of settled discussion into a published spec.",
+      "language": "en",
+      "boundary": "positive",
+      "invoked": true
+    },
+    {
+      "id": "matt-05",
+      "suite": "matt",
+      "request": "$skills：已有完整 spec，请拆成可逐步交付的 tracer-bullet tickets，写明 blocking edges；本次不实现 code。",
+      "expected": [
+        "to-tickets"
+      ],
+      "rationale": "Breaking an existing spec into dependency-linked tickets is to-tickets.",
+      "language": "zh",
+      "boundary": "positive",
+      "invoked": true
+    },
+    {
+      "id": "matt-06",
+      "suite": "matt",
+      "request": "$skills: Improve the synthetic ledger module's public interface and find a test seam that hides implementation details. Keep the work within this one module.",
+      "expected": [
+        "codebase-design"
+      ],
+      "rationale": "Module interfaces, deepening and test seams are explicitly owned by codebase-design.",
+      "language": "en",
+      "boundary": "positive",
+      "invoked": true
+    },
+    {
+      "id": "matt-07",
+      "suite": "matt",
+      "request": "$skills：请通过持续追问，challenge 我关于虚构 study app 的 plan 和 trade-offs；本次只做 conversation，不保存 project docs。",
+      "expected": [
+        "grill-me",
+        "grilling"
+      ],
+      "rationale": "Both promoted interview workflows cover challenging a plan; no saved project docs excludes grill-with-docs.",
+      "language": "zh",
+      "boundary": "ambiguous",
+      "invoked": true
+    },
+    {
+      "id": "matt-08",
+      "suite": "matt",
+      "request": "$skills: Investigate a synthetic storage API compatibility question using primary-source documentation and capture supported findings in a Markdown file in the repository.",
+      "expected": [
+        "research"
+      ],
+      "rationale": "The catalog's research workflow requires high-trust primary sources and repository findings.",
+      "language": "en",
+      "boundary": "positive",
+      "invoked": true
+    },
+    {
+      "id": "matt-09",
+      "suite": "matt",
+      "request": "$skills：明确使用 handoff，把本次虚构 coding session 的 decisions、已验证结果与剩余工作整理成给下一位 agent 的 document。",
+      "expected": [
+        "handoff"
+      ],
+      "rationale": "An explicit catalog workflow name is honored; handoff compacts the session for the next agent.",
+      "language": "zh",
+      "boundary": "positive",
+      "invoked": true,
+      "workflow": "handoff"
+    },
+    {
+      "id": "matt-10",
+      "suite": "matt",
+      "request": "$skills: List installable watercolor illustration skills from outside the Matt collection. I am not asking to create a skill, edit agent instructions, or configure this collection.",
+      "expected": [
+        "none"
+      ],
+      "rationale": "Umbrella invocation does not make unrelated skill discovery fit any promoted workflow.",
+      "language": "en",
+      "boundary": "negative",
+      "invoked": true
+    },
+    {
+      "id": "jev-01",
+      "suite": "jev",
+      "request": "给出 17 加 25 的结果；这是 deterministic arithmetic，不需要 semantic routing。",
+      "expected": [
+        "none"
+      ],
+      "rationale": "WORKFLOWS.none covers simple deterministic work; arithmetic stays in code or direct reasoning.",
+      "language": "zh",
+      "boundary": "negative"
+    },
+    {
+      "id": "jev-02",
+      "suite": "jev",
+      "request": "For a synthetic materials question, rank the supplied web search results by relevance and decide whether there is enough evidence to answer or whether another search is needed.",
+      "expected": [
+        "search"
+      ],
+      "rationale": "Search-result ranking and search-versus-answer sufficiency are WORKFLOWS.search.",
+      "language": "en",
+      "boundary": "positive"
+    },
+    {
+      "id": "jev-03",
+      "suite": "jev",
+      "request": "已有 12 段从虚构 internal wiki 检索出的 passages，请在放入 context 前按当前问题 rerank，只保留最相关的段落；不做 web search。",
+      "expected": [
+        "retrieval"
+      ],
+      "rationale": "More than five already retrieved passages competing for context select retrieval, not web search.",
+      "language": "zh",
+      "boundary": "ambiguous"
+    },
+    {
+      "id": "jev-04",
+      "suite": "jev",
+      "request": "Given a fresh synthetic browser observation and the allowed actions open-details, expand-section, and stop, choose the appropriate next action. Classify the choice only; execute nothing.",
+      "expected": [
+        "interaction"
+      ],
+      "rationale": "A bounded next-action choice grounded in a fresh browser observation maps to interaction without granting execution authority.",
+      "language": "en",
+      "boundary": "positive"
+    },
+    {
+      "id": "jev-05",
+      "suite": "jev",
+      "request": "请从虚构的长 conversation 中选择应保留的 turns，严格放入 3000-token context budget，供下一轮继续；不要写一般 session summary。",
+      "expected": [
+        "compaction"
+      ],
+      "rationale": "Explicit fixed-budget transcript-turn selection maps to compaction.",
+      "language": "zh",
+      "boundary": "positive"
+    },
+    {
+      "id": "jev-06",
+      "suite": "jev",
+      "request": "Sort this explicitly supplied synthetic mailbox export into action-needed, reference, and ignore, using each message's meaning. No live mailbox access or sending is requested.",
+      "expected": [
+        "mailbox"
+      ],
+      "rationale": "Classification of an explicitly supplied mailbox export uses mailbox rather than generic decision.",
+      "language": "en",
+      "boundary": "positive"
+    },
+    {
+      "id": "jev-07",
+      "suite": "jev",
+      "request": "对带 source links 的 synthetic social posts 做 relevance ranking，判断它们是否足以支持一个 community research conclusion；不需要新增 web search。",
+      "expected": [
+        "social"
+      ],
+      "rationale": "Source-linked social evidence relevance and sufficiency map specifically to social.",
+      "language": "zh",
+      "boundary": "ambiguous"
+    },
+    {
+      "id": "jev-08",
+      "suite": "jev",
+      "request": "For each synthetic workshop proposal, repeatedly choose one of the caller-defined options accept, revise, or defer from its semantic fit with the theme. The options and fallback are already fixed.",
+      "expected": [
+        "decision"
+      ],
+      "rationale": "A recurring narrow semantic choice with caller-owned closed options maps to decision.",
+      "language": "en",
+      "boundary": "positive"
+    },
+    {
+      "id": "native-01",
+      "suite": "native",
+      "request": "对已授权的虚构 parser frozen diff 做 correctness review，关注 null handling 与 regression。没有 route-specific requirements。",
+      "expected": [
+        "all"
+      ],
+      "rationale": "reviewer_fit keeps both admitted candidates when no concrete suitability constraint is supplied.",
+      "language": "zh",
+      "boundary": "positive",
+      "context": {
+        "admitted": true,
+        "selection_policy": "balanced-single",
+        "candidates": [
+          {
+            "route": "claude-cli",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "route": "antigravity-cli",
+            "model": "gemini-4-argon",
+            "effort": "high"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "native-02",
+      "suite": "native",
+      "request": "Review the frozen synthetic queue change for concurrency hazards and missing tests. No route-specific capability is required.",
+      "expected": [
+        "all"
+      ],
+      "rationale": "Task complexity or concurrency does not establish a route advantage; the default suitable subset is all.",
+      "language": "en",
+      "boundary": "positive",
+      "context": {
+        "admitted": true,
+        "selection_policy": "balanced-single",
+        "candidates": [
+          {
+            "route": "claude-cli",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "route": "antigravity-cli",
+            "model": "gemini-4-argon",
+            "effort": "high"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "native-03",
+      "suite": "native",
+      "request": "这个虚构 review 同时涉及 UI 和 backend。我觉得某个 model 名字听起来更专业，但没有 capability evidence，也没有指定 route；请保留符合 task 的 candidates。",
+      "expected": [
+        "all"
+      ],
+      "rationale": "The contract prohibits inferring quality from model names; a broad task alone does not justify narrowing.",
+      "language": "zh",
+      "boundary": "negative",
+      "context": {
+        "admitted": true,
+        "selection_policy": "balanced-single",
+        "candidates": [
+          {
+            "route": "claude-cli",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "route": "antigravity-cli",
+            "model": "gemini-4-argon",
+            "effort": "high"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "native-04",
+      "suite": "native",
+      "request": "Synthetic capability fixture: the review must validate a trace using the Atlas replay reader. In this fixture only claude-cli exposes that reader; antigravity-cli cannot read the trace, and no conversion is available. Both candidates were already admitted. Select the task-suitable subset.",
+      "expected": [
+        "claude"
+      ],
+      "rationale": "The request supplies a concrete synthetic capability asymmetry requiring claude-cli; this is not a model-performance claim.",
+      "language": "en",
+      "boundary": "positive",
+      "context": {
+        "admitted": true,
+        "selection_policy": "balanced-single",
+        "candidates": [
+          {
+            "route": "claude-cli",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "route": "antigravity-cli",
+            "model": "gemini-4-argon",
+            "effort": "high"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "native-05",
+      "suite": "native",
+      "request": "Synthetic capability fixture：这次 review 必须读取 Mosaic scene snapshot；在此 fixture 中只有 antigravity-cli 提供对应 reader，claude-cli 无法读取，且没有转换方法。两个 candidates 均已 admitted，请选择符合 task 的 subset。",
+      "expected": [
+        "gemini"
+      ],
+      "rationale": "The stated synthetic reader requirement makes only antigravity-cli suitable; no real-world model ranking is inferred.",
+      "language": "zh",
+      "boundary": "positive",
+      "context": {
+        "admitted": true,
+        "selection_policy": "balanced-single",
+        "candidates": [
+          {
+            "route": "claude-cli",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "route": "antigravity-cli",
+            "model": "gemini-4-argon",
+            "effort": "high"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "native-06",
+      "suite": "native",
+      "request": "Disable Jev task-fit assistance for this admitted synthetic review. Preserve the original candidate set and let the existing selection policy proceed.",
+      "expected": [
+        "all"
+      ],
+      "rationale": "enabled:false returns the original candidate set before any decision call, preserving user opt-out.",
+      "language": "en",
+      "boundary": "negative",
+      "context": {
+        "admitted": true,
+        "selection_policy": "balanced-single",
+        "candidates": [
+          {
+            "route": "claude-cli",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "route": "antigravity-cli",
+            "model": "gemini-4-argon",
+            "effort": "high"
+          }
+        ]
+      },
+      "enabled": false
+    }
+  ]
+}
