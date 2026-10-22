@@ -470,7 +470,10 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
             context += "For Jev workflow " + result["workflow"] + ", read the relevant reference in " + json.dumps(str(umbrella)) + ". "
         if result.get("design"):
             context += "Suggested design mode: " + result["design"]["mode"] + ". "
-        context += ("This is advisory. Check the actual request and session skill catalog before loading. "
+        context += ("This is a routing second opinion. The main LLM owns the final route. "
+                    "Compare with your own choice at the same routing layer; an umbrella and its workflow are different layers. "
+                    "On disagreement, recheck the request, eligible catalog and guide evidence once, then decide. "
+                    "Failure or local fallback is abstention. Native-review owns admitted code review; routing disagreement does not start one. "
                     "Preserve explicit model, effort, Fast, permissions, tool bans and existing authorization. "
                     "Do not rerun skill selection for this turn unless the task changes.")
         return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}

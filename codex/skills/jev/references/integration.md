@@ -25,6 +25,12 @@ Receipts report `catalog_source`, snapshot timestamp/hash and admitted namespace
 IDs, without raw prompts/transcript text. A session catalog is not evidence of external
 service authorization; main-model/tool access checks still apply.
 
+The hook supplies a routing second opinion, not the final route. It runs before the
+main LLM and cannot observe that model's later choice. Its additional context requires
+one main-LLM evidence recheck on same-layer disagreement, without rerunning Jev for the
+same decision. No Stop hook or automatic code-review dispatch is needed; `native-review`
+continues to own admitted code review. Abstention and local fallback are not disagreement.
+
 Review/trust the installed hook once using Codex `/hooks`; changed hook definitions
 require review again. Do not fabricate trust hashes or bypass trust. Restart or resume
 Codex when required by the host. `scripts/jev.py status` shows only actual recorded

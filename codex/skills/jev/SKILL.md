@@ -9,6 +9,24 @@ One entrypoint for Jev decision support. The main model owns the task, writing,
 implementation and evidence. Jev answers narrow typed questions; it does not grant
 permission, generate commands, replace the main model or prove completion.
 
+## Routing Second Opinion
+
+The main LLM forms its own route from the request and eligible catalog, then compares
+it with the current Jev recommendation at the same layer: skill, internal workflow,
+design mode or admitted reviewer task fit. An umbrella skill and its internal workflow
+are different layers, not conflicting choices. Reuse the turn's recommendation;
+explicit or settled choices still need no extra call.
+
+On disagreement, recheck the request, invocation constraints and relevant guide evidence
+once. The main LLM makes the final choice and briefly explains a material difference.
+This is an evidence recheck, not a second Jev call, a model switch or another reviewer.
+A verified no-match can disagree with an applicable route; failure, low confidence and
+local fallback are abstentions, not disagreements. Agreement is not proof of correctness.
+Explicit user choices and mandatory skill instructions remain authoritative.
+
+Jev provides routing advice; `native-review` owns admitted code review and its findings.
+A routing disagreement alone never starts a code review or expands its participants.
+
 ## Read Current Official Guidance
 
 When entering a Jev workflow beyond unchanged skill/design dispatch, run the bundled
@@ -32,7 +50,7 @@ Reading guidance does not authorize a disabled or explicit-only skill or any new
 2. For ambiguous skill selection, run the bundled `scripts/jev.py select` with JSON on
    stdin: `{"turn":"short request","catalog":[{"name":"exact host skill ID","description":"...","path":"absolute SKILL.md path"}]}`.
    Use the current session's available-skills catalog, including plugin namespaces.
-   Read the selected skill, check its fit, then continue the task. An empty verified
+   Compare the suggested skill with the main LLM's route, check its fit, then continue. An empty verified
    selection means no catalog skill was selected. `fail_open` means decide normally.
 3. For an ambiguous design mode, use `design` with `{"turn":"UI request"}` and read
    that mode in `$design`. Explicit mode names and clear single-mode requests need

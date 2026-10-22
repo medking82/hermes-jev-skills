@@ -14,6 +14,8 @@ and `break-ui`. Add an explicit mode in `allowed_modes` only when the actual req
 authorizes it. The allowed set must also retain all other relevant regular modes;
 the helper always includes the general default. A Jev result cannot authorize those modes.
 
-If a hook already returned `design.mode`, read that guide directly. Otherwise use
-the helper only when two or more modes plausibly fit. Preserve the user's existing
-UI copy preference, framework, tokens and dependencies.
+If a hook already returned `design.mode`, reuse it as a second opinion on the main
+LLM's mode choice. Otherwise use the helper only when two or more modes plausibly fit.
+On disagreement, recheck the request, opt-in constraints and guide evidence once, then
+choose the mode without another Jev call. Preserve the user's existing UI copy
+preference, framework, tokens and dependencies.
