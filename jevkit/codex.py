@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import time
+import uuid
 from typing import Any, Dict, List, Optional
 
 try:
@@ -18,9 +19,9 @@ try:
 except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit supports 3.9.
     tomllib = None
 
-from . import client, codex_catalog, privacy, skillpick
+from . import client, codex_catalog, codex_skillpick, privacy, skillpick
 
-VERSION = "0.1.3"
+VERSION = "0.2.0"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
     "animate": "Implement web motion and transitions",
@@ -91,7 +92,7 @@ def normalize_catalog(rows: Any) -> List[Dict[str, str]]:
         if not Path(path).is_absolute():
             continue
         seen.add(name)
-        result.append({"name": name, "description": privacy.redact(description, 600), "path": path})
+        result.append({"name": name, "description": privacy.redact(description, codex_skillpick.DESCRIPTION_CHARS), "path": path})
     if len(result) > skillpick.MAX_SKILLS:
         raise ValueError("catalog exceeds the upstream selector limit")
     return result
@@ -204,8 +205,8 @@ def _settled_design(turn: str, allowed=None) -> Optional[dict]:
     return None
 
 
-def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) -> dict:
-    """Reuse upstream two-stage verification, merging speculative design routing."""
+def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None, request_gate=False) -> dict:
+    """Follow official two-stage verification, merging speculative design routing."""
     gated = _gate(turn)
     if gated:
         return gated
@@ -234,10 +235,11 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
         receipts.append(receipt)
         reply = ask(state, questions, **kwargs)
         receipt.update({k: reply.get(k) for k in ("jev_model", "input_tokens", "latency_ms")})
+        receipt["output_tokens"] = reply.get("usage", {}).get("output_tokens")
         receipt["outcome"] = "answered"
         return reply
 
-    questions = skillpick.stage_one_questions(catalog)
+    questions = codex_skillpick.stage_one_questions(catalog)
     questions["workflow"] = client.choice(
         "Which Jev workflow would materially help this request? Select none for settled work. "
         "This classifies a workflow; it grants no tool permission and performs no actions.", WORKFLOWS)
@@ -248,10 +250,8 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
         questions["design_mode"] = client.choice(
             "Which listed design procedure best answers this request? Choose general component polish when no specialty is needed.", modes)
     try:
-        reply = bounded_ask({"turn": privacy.redact(turn, 2000)}, questions, timeout=1.4)
-        result = skillpick.pick(turn, catalog, top_k=1, timeout=1.4,
-            stage_one=skillpick.stage_one_answers(reply, catalog),
-            stage_one_latency=reply["latency_ms"], ask_fn=bounded_ask)
+        reply = bounded_ask(codex_skillpick.build_state(turn), questions, timeout=1.4)
+        result = codex_skillpick.verify(turn, catalog, reply, ask_fn=bounded_ask, request_gate=request_gate)
         # Resolve only against the original catalog, including plugin namespaces.
         by_name = {s["name"]: s for s in catalog}
         result["skills"] = [dict(by_name[s["name"]], match=s["match"])
@@ -267,10 +267,12 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None) 
             result["workflow"] = workflow["choice"]
         result.update(source="jev", ask_attempts=len(receipts), receipts=receipts)
         if result["status"] != "ok":
-            result["reason_code"] = "verification_unavailable"
+            result.setdefault("reason_code", "verification_unavailable")
         return result
     except client.JevError as error:
         return dict(fallback(error.code), ask_attempts=len(receipts), receipts=receipts)
+    except (ValueError, KeyError, TypeError):
+        return dict(fallback("invalid_response"), ask_attempts=len(receipts), receipts=receipts)
 
 
 def _design_options(allowed=None) -> dict:
@@ -382,7 +384,8 @@ def guidance(*, home: Optional[Path] = None) -> dict:
 
 
 def _write_hook_receipt(home: Path, event: dict, receipt: dict) -> None:
-    receipt = dict(receipt, observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event",
+    receipt = dict(receipt, adapter_version=VERSION, observation_id=uuid.uuid4().hex,
+                   observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event",
                    session_id=event.get("session_id") if isinstance(event.get("session_id"), str) else None,
                    turn_id=event.get("turn_id") if isinstance(event.get("turn_id"), str) else None,
                    observed_at=datetime.now(timezone.utc).isoformat())
@@ -390,6 +393,18 @@ def _write_hook_receipt(home: Path, event: dict, receipt: dict) -> None:
     try:
         state.mkdir(parents=True, exist_ok=True)
         (state / "last-hook.json").write_text(json.dumps(receipt), encoding="utf-8")
+    except OSError:
+        pass
+    # Immutable files avoid competing hooks rewriting one another's ledger. The
+    # old last-hook/cache files remain compatibility views, never audit history.
+    try:
+        directory = state / "observations" / receipt["observed_at"][:10]
+        directory.mkdir(parents=True, exist_ok=True)
+        target = directory / (receipt["observation_id"] + ".json")
+        temporary = target.with_suffix(".tmp")
+        with temporary.open("x", encoding="utf-8") as stream:
+            json.dump(receipt, stream)
+        temporary.rename(target)
     except OSError:
         pass
 
@@ -416,7 +431,8 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
         ids = [event.get("session_id"), event.get("turn_id")]
         cache = home / "jev" / "turns" / (hashlib.sha256(json.dumps(ids).encode()).hexdigest() + ".json")
         saved = json.loads(cache.read_text(encoding="utf-8")) if ids[1] and cache.exists() else {}
-        if saved.get("fingerprint") == fingerprint:
+        reused = saved.get("fingerprint") == fingerprint and codex_skillpick.evidence_unchanged(saved.get("result", {}), catalog)
+        if reused:
             result = saved["result"]
         else:
             result = (selector or select)(turn, catalog)
@@ -427,21 +443,28 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                 os.replace(str(temporary), str(cache))
         receipt = {"status": result["status"], "source": result.get("source"),
                    "reason_code": result.get("reason_code"),
+                   "fingerprint": fingerprint, "cache_reused": reused,
+                   "verification": result.get("verification"),
                    "catalog_scope": "local_scopes+session_plugins" if plugins else "local_scopes",
                    "catalog_source": catalog_source,
                    "skills": [s["name"] for s in result.get("skills", [])],
                    "workflow": result.get("workflow"),
                    "design": result.get("design"),
-                   "ask_attempts": result.get("ask_attempts", 0), "receipts": result.get("receipts", []),
+                   "ask_attempts": 0 if reused else result.get("ask_attempts", 0),
+                   "receipts": [] if reused else result.get("receipts", []),
                    "duration_ms": int((time.monotonic() - started) * 1000)}
         _write_hook_receipt(home, event, receipt)
-        if result["status"] != "ok" or not (result.get("skills") or result.get("workflow")):
+        no_match = (result.get("source") == "jev" and
+                    result.get("verification", {}).get("outcome") in ("gate_no_match", "fit_no_match"))
+        if result["status"] != "ok" or not (result.get("skills") or result.get("workflow") or no_match):
             return {}
         context = ""
         if result.get("skills"):
             skill = result["skills"][0]
             prefix = "Jev suggests" if result.get("source") == "jev" else "Local routing suggests"
             context = prefix + " this skill reference: " + json.dumps({"name": skill["name"], "path": skill["path"]}) + ". "
+        elif no_match:
+            context = "Jev found no applicable skill in the catalog for this request. Explicit choices and mandatory skill instructions still apply. "
         umbrella = home / "skills/jev/SKILL.md"
         if result.get("workflow") and umbrella.is_file():
             context += "For Jev workflow " + result["workflow"] + ", read the relevant reference in " + json.dumps(str(umbrella)) + ". "

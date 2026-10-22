@@ -61,9 +61,29 @@ Acknowledgements, explicit selections, sensitive requests and user opt-outs skip
 selection. Whole commands naming an exact design mode and a narrow grammar for ordinary
 component polish also route locally. Extra prose, conflicting modes and unknown wording
 retain the existing semantic selector; this is not a general ambiguity classifier.
-For an ambiguous turn, the adapter reuses upstream two-stage skill selection;
-an independent design-mode question shares stage one's request. It injects a short
-advisory recommendation, never a tool call or a blocking decision.
+For an ambiguous turn, the adapter follows TypeSafe's official
+[skill-suggestion recipe](https://docs.typesafe.ai/cookbooks/skill_suggestion):
+stage one combines a catalog Choice with three independent applicability Nouls;
+stage two reads the top three candidates' full descriptions and first 700 characters
+of `SKILL.md` body, then asks a Choice plus one fit Noul per candidate. Choice selects
+the winner; the maximum fit Noul decides whether to suggest anything, as in the
+cookbook, with its initial 0.30 fit threshold. The request-only gate is recorded
+but not enforced by the installed hook: the full cookbook's 0.30 early gate missed
+covered requests in local evaluation before their instructions could be read. Use
+`--official-gate` in the evaluator to reproduce that policy. This is the measured
+adaptation described in [the scorecard](skillpick-evaluation.md), not threshold tuning
+to individual skill names or a task-context deduplication rule.
+An independent design-mode question still shares stage one's request. The community
+selector is unchanged. At most one skill is suggested, and verified no-match has its
+own advisory sentence; an outage remains silent fail-open. No hint overrides an
+explicit selection or mandatory skill instruction, loads a skill, or executes a tool.
+
+Only shortlisted, already-admitted entrypoints are opened; linked resources are not
+followed. Reads are bounded to 16,000 characters, descriptions to 8,000 and body excerpts
+to 700. Sensitive lines (including credential-setup examples) are withheld before the
+normal redaction boundary. Missing, linked or malformed evidence, or filtering that
+leaves no usable evidence, fails open rather than silently pretending that full
+verification ran. No local file paths accompany the evidence sent to Jev.
 
 The hook catalog covers both user scopes above (including `.system`), explicitly trusted
 project scopes, and plugins in this session's host-supplied available-skills catalog.
@@ -85,7 +105,8 @@ Discovery stops at skill entrypoints instead of walking resources, dependencies 
 embedded examples. Timeouts/catalog failures leave explicit, prompt-free reason codes.
 Inactive configured paths are compared lexically without probing other filesystems.
 
-Only duplicate delivery of the same turn may reuse a prompt-free fingerprint/result.
+Only duplicate delivery of the same turn may reuse a prompt-free fingerprint/result;
+the shortlisted evidence hashes must still match, including body-only changes.
 There is no cross-turn decision cache or added retry loop. `JEV_CODEX_OFF=1` disables the
 automatic gate. Existing `JEV_PROVIDER` is respected; otherwise the adapter uses TypeSafe
 without provider fallback. It preserves the existing Jev alias/version setting and logs
@@ -97,6 +118,28 @@ text. UTC timestamps, session/turn IDs and the selected design mode allow correl
 with real host hook notifications. A local recommendation is labelled as local, not a
 Jev model response. The Windows launcher briefly spools stdin under the user's Codex runtime so the
 shared hidden runner can consume it, then removes the file in `finally`.
+
+Each observation is also retained once under
+`<codex-home>/jev/observations/<UTC-date>/<observation-id>.json`. Unique immutable files
+avoid concurrent hooks rewriting a shared history. Receipts identify the adapter/recipe,
+gate values, candidates, excerpt hashes/lengths, fit values, outcome and actual attempts.
+A reused same-turn result records zero new attempts; a killed worker leaves attempts
+unknown, not zero. Manual smoke events are labelled separately. Receipt storage failure
+does not block the task. These records establish suggestions, not actual skill loads or
+task success; those require separately observed outcomes. No task-context deduplication,
+cross-turn result reuse or automatic skill-suppression policy is added.
+
+### Evaluate The Selector
+
+`python -B codex/evaluate_skillpick.py --check` validates the synthetic bilingual
+fixtures offline. `--live` explicitly runs a bounded paired legacy/new-selector
+comparison using the existing client, model and credentials, with no added retries.
+Add `--official-gate` to compare the complete cookbook policy instead of the installed
+body-verification policy. Use `--help` for the case limit and output path. Reports contain case IDs, labels,
+selection outcomes, model versions, attempts, tokens and wall latency, without request
+text, skill bodies or local paths. Fail-open is reported separately from correct
+no-match. This is selector evaluation, not an agent baseline/oracle study, proof of
+skill loading, task completion or realized cost savings. Keep generated reports local.
 
 ## Principles
 

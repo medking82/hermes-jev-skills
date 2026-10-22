@@ -13,20 +13,33 @@ from jevkit import client, codex
 
 class CodexRoutingTests(unittest.TestCase):
     def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="codex-select-", dir=Path(__file__).parent)
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name).resolve()
         self.catalog = [
-            {"name": "design", "description": "Design and polish user interfaces", "path": str(Path("design/SKILL.md").resolve())},
-            {"name": "drive:documents", "description": "Edit connected documents", "path": str(Path("docs/SKILL.md").resolve())},
+            {"name": "design", "description": "Design and polish user interfaces", "path": str(root / "design/SKILL.md")},
+            {"name": "drive:documents", "description": "Edit connected documents", "path": str(root / "docs/SKILL.md")},
         ]
+        for row in self.catalog:
+            path = Path(row["path"])
+            path.parent.mkdir()
+            path.write_text("---\nname: " + row["name"] + "\ndescription: " + row["description"] +
+                            "\n---\n# Procedure\n" + row["description"], encoding="utf-8")
         self.calls = []
 
     def ask(self, state, questions, **kwargs):
         self.calls.append((state, questions, kwargs))
-        if "pick:0" in questions:
-            answers = {"pick:0": {"probabilities": {"S0": .9, "S1": .05, "none": .05}},
+        if "gate::acts_on_user_system" in questions:
+            answers = {"which": {"probabilities": {"design": .9, "drive:documents": .1}},
+                       "gate::acts_on_user_system": {"noul": .9},
+                       "gate::would_follow_documented_procedure": {"noul": .9},
+                       "gate::prose_suffices": {"noul": .1},
                        "design_mode": {"choice": "mobile-native", "confidence": .8},
                        "workflow": {"choice": "none", "confidence": .8}}
         else:
-            answers = {key: {"noul": .1 if key == "s1" else .9} for key in questions}
+            answers = {key: {"noul": .1 if key == "fits::drive:documents" else .9} for key in questions}
+            if "which" in questions:
+                answers["which"] = {"choice": "design", "confidence": .8}
         return {"answers": answers, "latency_ms": 15, "jev_model": "synthetic-version", "input_tokens": 400}
 
     def test_two_stage_selector_merges_design_and_preserves_paths(self):
@@ -36,7 +49,8 @@ class CodexRoutingTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 2)
         self.assertIn("design_mode", self.calls[0][1])
         self.assertIn("workflow", self.calls[0][1])
-        self.assertIn("needs_skill", self.calls[1][1])
+        self.assertIn("fits::design", self.calls[1][1])
+        self.assertIn("# Procedure", self.calls[1][1]["which"]["criteria"]["design"])
         self.assertTrue(all(c[2]["retries"] == 0 for c in self.calls))
         self.assertTrue(all(c[2]["provider"] == "typesafe" for c in self.calls))
         self.assertEqual(result["receipts"][0]["jev_model"], "synthetic-version")
@@ -69,8 +83,9 @@ class CodexRoutingTests(unittest.TestCase):
     def test_stage_two_can_reject_all(self):
         def ask(state, questions, **kwargs):
             reply = self.ask(state, questions, **kwargs)
-            if "needs_skill" in questions:
-                reply["answers"]["needs_skill"]["noul"] = .1
+            for key in questions:
+                if key.startswith("fits::"):
+                    reply["answers"][key]["noul"] = .1
             return reply
         result = codex.select("Polish the interface", self.catalog, ask_fn=ask)
         self.assertEqual(result["skills"], [])
@@ -83,7 +98,9 @@ class CodexRoutingTests(unittest.TestCase):
                 reply["answers"]["workflow"] = {"choice": "search", "confidence": .8}
                 reply["answers"]["workflow_needed"] = {"noul": .9}
             else:
-                reply["answers"]["needs_skill"]["noul"] = .1
+                for key in questions:
+                    if key.startswith("fits::"):
+                        reply["answers"][key]["noul"] = .1
             return reply
         result = codex.select("Research primary sources and rank the evidence", self.catalog, ask_fn=ask)
         self.assertEqual(result["skills"], [])
@@ -102,8 +119,9 @@ class CodexRoutingTests(unittest.TestCase):
     def test_namespaced_host_id_is_retained(self):
         rows = [self.catalog[1]]
         def ask(state, questions, **kwargs):
-            if "pick:0" in questions:
-                return {"answers": {"pick:0": {"probabilities": {"S0": .9, "none": .1}}}, "latency_ms": 1}
+            if "gate::acts_on_user_system" in questions:
+                return {"answers": {"which": {"probabilities": {"drive:documents": .9, "__no_match__": .1}},
+                        **{key: {"noul": .9} for key in questions if key.startswith("gate::")}}, "latency_ms": 1}
             return {"answers": {k: {"noul": .9} for k in questions}, "latency_ms": 1}
         self.assertEqual(codex.select("Edit a connected document", rows, ask_fn=ask)["skills"][0]["name"], "drive:documents")
 

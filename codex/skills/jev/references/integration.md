@@ -9,8 +9,14 @@ paths in Codex config. Backups stay under Codex home; shared-scope copies use a 
 `retired/agents/` directory so matching names do not overwrite each other.
 
 `UserPromptSubmit` runs the selector before the main model. The hook recommends one
-skill and can include a design mode from the same stage-one request. Upstream two-stage
-skill verification still decides whether any specialist is needed. Plugin candidates
+skill and can include a design mode from the same stage-one request. The official
+TypeSafe skill-suggestion recipe combines Choice with independent applicability Nouls,
+then verifies the top three using full descriptions and 700-character body excerpts.
+The 0.30 fit threshold follows the cookbook. The request-only 0.30 gate is recorded
+but evaluation-only after it missed covered requests before body verification;
+`codex/evaluate_skillpick.py --official-gate` retains the full recipe for comparison.
+No-match is advisory; missing/unsafe evidence or an API failure returns control normally.
+The upstream community selector remains unchanged. Plugin candidates
 come from this session's host-supplied available-skills record in its native rollout,
 bound to the active session/turn/cwd. The hook never scans unrelated plugin caches.
 Current skill/plugin disables and explicit-only policies are checked again. Missing,
@@ -38,8 +44,11 @@ an active turn does not establish a new `UserPromptSubmit` event.
 Persistent hook receipts/caches keep only metadata and a per-turn fingerprint/result,
 without raw prompts, credentials, transcripts or retrieved content. Windows briefly
 spools non-sensitive stdin for the shared hidden runner and deletes it in `finally`.
-Duplicate turn delivery
-can reuse a result; later turns are reevaluated. Disable network selection with
+Immutable metadata observations also live under `jev/observations/<UTC-date>/` for
+evaluation. They retain recipe/gate/fit values and excerpt hashes, never skill bodies.
+They prove suggestions, not actual skill loads or task success. Duplicate turn delivery
+can reuse a result only while candidate evidence is unchanged and records zero new
+attempts; later turns are reevaluated. Disable network selection with
 `JEV_CODEX_OFF=1`; the main model continues normally.
 
 Upstream sync tests an exact merged candidate in isolated Linux/macOS/Windows jobs, then
