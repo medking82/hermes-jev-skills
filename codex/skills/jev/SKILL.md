@@ -24,6 +24,13 @@ A verified no-match can disagree with an applicable route; failure, low confiden
 local fallback are abstentions, not disagreements. Agreement is not proof of correctness.
 Explicit user choices and mandatory skill instructions remain authoritative.
 
+The automatic hook only enters Jev selection for explicit skill/workflow/design-mode
+routing questions. Ordinary execution and continuation requests abstain locally;
+`/jev` requests remain on demand. Absence of a hint does not mean no skill applies.
+Use the commands below when an unresolved, useful choice warrants them. Automatic
+and on-demand skill selection retain the same two-stage body verification; no
+cross-turn task-context deduplication is applied.
+
 Jev provides routing advice; `native-review` owns admitted code review and its findings.
 A routing disagreement alone never starts a code review or expands its participants.
 

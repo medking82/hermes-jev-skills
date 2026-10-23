@@ -189,7 +189,7 @@ class OfficialSkillRecipeTests(unittest.TestCase):
     def test_hook_ledger_preserves_observations_and_counts_duplicate_calls_once(self):
         home = self.root / "home"
         event = {"hook_event_name": "UserPromptSubmit", "session_id": "synthetic-session", "turn_id": "one",
-                 "prompt": "Create a new deck", "cwd": str(self.root), "_jev_invocation": "manual_smoke"}
+                 "prompt": "Which skill should create a new deck?", "cwd": str(self.root), "_jev_invocation": "manual_smoke"}
         selector = Mock(side_effect=lambda turn, catalog: codex.select(turn, catalog, ask_fn=self.ask))
         with patch.object(codex, "local_catalog", return_value=self.catalog), \
                 patch.object(codex.codex_catalog, "session_plugins", return_value=([], {})):
@@ -213,7 +213,7 @@ class OfficialSkillRecipeTests(unittest.TestCase):
         self.assertTrue(all(r["observation_source"] == "manual_smoke" for r in rows))
 
     def test_hook_no_match_is_advisory_but_failure_is_silent(self):
-        event = {"hook_event_name": "UserPromptSubmit", "prompt": "Explain monads", "cwd": str(self.root)}
+        event = {"hook_event_name": "UserPromptSubmit", "prompt": "Which skill should explain monads?", "cwd": str(self.root)}
         with patch.object(codex, "local_catalog", return_value=self.catalog), \
                 patch.object(codex.codex_catalog, "session_plugins", return_value=([], {})):
             selector = Mock(return_value={"status": "ok", "source": "jev", "skills": [],

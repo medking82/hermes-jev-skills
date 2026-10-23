@@ -23,7 +23,7 @@ class SessionPluginTests(unittest.TestCase):
         self.session = str(uuid.UUID(int=(stamp << 80) | (7 << 76) | (2 << 62) | 123))
         self.turn = str(uuid.uuid4())
         self.event = {"session_id": self.session, "turn_id": self.turn, "cwd": str(self.home),
-                      "hook_event_name": "UserPromptSubmit", "prompt": "Prepare a quarterly workbook with totals and charts."}
+                      "hook_event_name": "UserPromptSubmit", "prompt": "Which skill should prepare a quarterly workbook with totals and charts?"}
         self.path = self.home / "sessions/2026/01/15" / ("rollout-fixture-" + self.session + ".jsonl")
         self.path.parent.mkdir(parents=True)
         self.plugin = self.add_plugin("workbook")

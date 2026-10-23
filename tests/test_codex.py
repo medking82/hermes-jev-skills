@@ -261,7 +261,85 @@ class CodexHookTests(unittest.TestCase):
         self.skill.parent.mkdir(parents=True)
         self.skill.write_text("---\nname: design\ndescription: Polish interfaces\n---\n", encoding="utf-8")
         self.event = {"hook_event_name": "UserPromptSubmit", "session_id": "synthetic-session", "turn_id": "turn-1",
-                      "prompt": "Polish the screen", "cwd": str(self.home)}
+                      "prompt": "Which design mode fits polishing this screen?", "cwd": str(self.home)}
+
+    def test_ordinary_tasks_and_continuations_skip_before_catalog_or_selector(self):
+        selector = Mock(side_effect=AssertionError("unexpected selector"))
+        prompts = (
+            "Implement the agreed fix and run the regression tests.",
+            "Review the diff for correctness.",
+            "Find the latest official documentation.",
+            "Assess whether the application can work offline.",
+            "继续按已经确定的方案完成实现和验证。",
+            "看看这两个问题后来有没有修复。",
+            "Document this example:\n```text\nWhich skill should I use?\n```",
+            "Adjust the button spacing\n> Which skill should I use?",
+            "Do not choose a workflow; continue the agreed implementation.",
+            "不要替我选择 skill，继续执行。",
+        )
+        with patch.object(codex, "local_catalog", side_effect=AssertionError("unexpected catalog")):
+            for prompt in prompts:
+                with self.subTest(prompt=prompt):
+                    self.assertEqual(codex.hook(dict(self.event, prompt=prompt), home=self.home, selector=selector), {})
+                    receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+                    self.assertEqual(receipt["reason_code"], "automatic_scope_skipped")
+                    self.assertEqual(receipt["ask_attempts"], 0)
+                    self.assertEqual(receipt["receipts"], [])
+                    self.assertFalse(receipt["trigger_eligible"])
+                    self.assertIsInstance(receipt["duration_ms"], int)
+                    self.assertNotIn(prompt, json.dumps(receipt))
+        selector.assert_not_called()
+
+    def test_routing_requests_are_admitted_without_task_history(self):
+        selector = Mock(return_value={"status": "ok", "source": "jev", "skills": [],
+                                      "ask_attempts": 2, "receipts": []})
+        for index, prompt in enumerate((
+            "Which skill should handle this request?",
+            "Please choose a workflow for this task.",
+            "Which design mode fits this interface problem?",
+            "这个任务应该用哪个 skill？",
+            "帮我选择适合这个任务的工作流。",
+            "design mode 该选哪个？",
+        )):
+            codex.hook(dict(self.event, prompt=prompt, turn_id=str(index)), home=self.home, selector=selector)
+            receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+            self.assertTrue(receipt["trigger_eligible"])
+            self.assertEqual(receipt["trigger_reason"], "routing_request")
+            self.assertEqual(receipt["automatic_trigger_policy"], "routing-requests-v1")
+        self.assertEqual(selector.call_count, 6)
+
+    def test_local_explicit_and_settled_design_routes_still_use_no_api(self):
+        with patch.object(client, "ask", side_effect=AssertionError("unexpected API")):
+            for prompt in ("Use $design to fix the form", "Adjust the button spacing"):
+                result = codex.hook(dict(self.event, prompt=prompt), home=self.home)
+                self.assertIn("Local routing suggests", result["hookSpecificOutput"]["additionalContext"])
+                receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+                self.assertEqual(receipt["ask_attempts"], 0)
+            for prompt in ("Use $unknown-helper for the form", "/jev help me choose an approach"):
+                self.assertEqual(codex.hook(dict(self.event, prompt=prompt), home=self.home), {})
+
+    def test_narrow_hook_keeps_two_stage_body_verification(self):
+        calls = []
+        def ask(state, questions, **kwargs):
+            calls.append(questions)
+            if "gate::acts_on_user_system" in questions:
+                answers = {"which": {"probabilities": {"design": .9, "__no_match__": .1}},
+                           "gate::acts_on_user_system": {"noul": .9},
+                           "gate::would_follow_documented_procedure": {"noul": .9},
+                           "gate::prose_suffices": {"noul": .1},
+                           "design_mode": {"choice": "animate", "confidence": .8}}
+            else:
+                answers = {"fits::design": {"noul": .9}}
+            return {"answers": answers, "latency_ms": 4, "input_tokens": 20,
+                    "usage": {"output_tokens": 3}, "jev_model": "synthetic"}
+        self.skill.write_text("---\nname: design\ndescription: Polish interfaces\n---\nInspect the existing interface before editing.\n", encoding="utf-8")
+        with patch.object(client, "ask", side_effect=ask):
+            codex.hook(self.event, home=self.home)
+        self.assertEqual(len(calls), 2)
+        receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+        self.assertEqual(receipt["ask_attempts"], 2)
+        self.assertEqual(receipt["verification"]["recipe"], "typesafe-skill-suggestion-v1")
+        self.assertGreater(receipt["verification"]["evidence"][0]["body_chars"], 0)
 
     def test_duplicate_turn_reuses_result_but_changed_task_and_catalog_do_not(self):
         selector = Mock(return_value={"status": "ok", "source": "jev", "skills": [
@@ -270,10 +348,10 @@ class CodexHookTests(unittest.TestCase):
         self.assertIn("animate", first["hookSpecificOutput"]["additionalContext"])
         codex.hook(self.event, home=self.home, selector=selector)
         self.assertEqual(selector.call_count, 1)
-        codex.hook(dict(self.event, prompt="Fix mobile scroll"), home=self.home, selector=selector)
+        codex.hook(dict(self.event, prompt="Which design mode fits mobile scroll?"), home=self.home, selector=selector)
         self.assertEqual(selector.call_count, 2)
         self.skill.write_text("---\nname: design\ndescription: Changed scope\n---\n", encoding="utf-8")
-        codex.hook(dict(self.event, prompt="Fix mobile scroll"), home=self.home, selector=selector)
+        codex.hook(dict(self.event, prompt="Which design mode fits mobile scroll?"), home=self.home, selector=selector)
         self.assertEqual(selector.call_count, 3)
         codex.hook(dict(self.event, turn_id="turn-2"), home=self.home, selector=selector)
         self.assertEqual(selector.call_count, 4)

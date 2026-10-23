@@ -57,11 +57,22 @@ input inside an active turn is not a substitute for an independent `UserPromptSu
 ## Runtime
 
 `UserPromptSubmit` runs before the model. Its worker gets a hard 3.5-second deadline.
-Acknowledgements, explicit selections, sensitive requests and user opt-outs skip network
-selection. Whole commands naming an exact design mode and a narrow grammar for ordinary
-component polish also route locally. Extra prose, conflicting modes and unknown wording
-retain the existing semantic selector; this is not a general ambiguity classifier.
-For an ambiguous turn, the adapter follows TypeSafe's official
+Adapter 0.3.0 uses the conservative `routing-requests-v1` automatic trigger: only a
+current request explicitly asking which skill, workflow or design mode to choose
+enters model selection. For example, "Which skill should handle this request?" and
+"这个任务应该用哪个 skill？" are eligible. Ordinary implementation, review, research
+and continuation requests skip selection before catalog discovery. This is a narrow
+English/Chinese syntax gate, not a general ambiguity classifier; it may abstain on
+other wording. Fenced examples and blockquotes do not open the gate.
+
+Acknowledgements, sensitive requests and user opt-outs also skip network selection.
+Explicit skill selections, whole commands naming an exact design mode and a narrow
+component-polish grammar still route locally. An unavailable explicit skill never
+falls through to Jev. `/jev` or `$jev` requests go to the main agent without a duplicate
+automatic call. The main agent retains the on-demand `select`, `design` and `decision`
+commands for useful ambiguous choices; their eligibility and questions are unchanged.
+
+For an eligible routing request, the adapter follows TypeSafe's official
 [skill-suggestion recipe](https://docs.typesafe.ai/cookbooks/skill_suggestion):
 stage one combines a catalog Choice with three independent applicability Nouls;
 stage two reads the top three candidates' full descriptions and first 700 characters
@@ -122,12 +133,21 @@ shared hidden runner can consume it, then removes the file in `finally`.
 Each observation is also retained once under
 `<codex-home>/jev/observations/<UTC-date>/<observation-id>.json`. Unique immutable files
 avoid concurrent hooks rewriting a shared history. Receipts identify the adapter/recipe,
+`automatic_trigger_policy`, `trigger_reason` and `trigger_eligible`,
 gate values, candidates, excerpt hashes/lengths, fit values, outcome and actual attempts.
 A reused same-turn result records zero new attempts; a killed worker leaves attempts
 unknown, not zero. Manual smoke events are labelled separately. Receipt storage failure
 does not block the task. These records establish suggestions, not actual skill loads or
 task success; those require separately observed outcomes. No task-context deduplication,
 cross-turn result reuse or automatic skill-suppression policy is added.
+
+Compare each adapter/trigger-policy cohort separately. `automatic_scope_skipped` is a
+local zero-call abstention, not a verified model no-match. Include skipped real turns
+when measuring hook overhead, and sample their subsequent native skill loads and task
+outcomes for missed useful routing. Retain unknown attempts/usage after worker failures;
+known early skips record zero attempts. API latency and worker duration are distinct
+from the unobserved full host/launcher delay. Offline regressions establish boundaries,
+not adoption, task benefit or net savings against a comparable baseline.
 
 ### Evaluate The Selector
 
