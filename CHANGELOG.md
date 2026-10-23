@@ -1399,6 +1399,13 @@ First release.
 
 ## Codex Adapter (Fork)
 
+- Adapter 0.3.0 limits automatic Jev selection to explicit skill/workflow/design-mode
+  routing questions with a conservative local syntax gate. Ordinary execution and
+  continuation skip before catalog discovery; explicit/local routes remain zero-call.
+  Preserve on-demand commands, two-stage body verification, thresholds and same-turn
+  cache behavior; add no task-context deduplication. Receipts identify trigger policy,
+  eligibility and skip reason for separate real-task cohorts and overhead accounting.
+
 - Adapter 0.2.0 follows the official TypeSafe skill-suggestion recipe: a shared
   Choice/applicability first request, then top-three full descriptions and bounded
   instruction excerpts with independent fit checks. Preserve the existing advisory,

@@ -21,7 +21,8 @@ except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit s
 
 from . import client, codex_catalog, codex_skillpick, privacy, skillpick
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
+AUTOMATIC_TRIGGER_POLICY = "routing-requests-v1"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
     "animate": "Implement web motion and transitions",
@@ -172,6 +173,34 @@ def _gate(turn: str) -> Optional[dict]:
     if skillpick.looks_trivial(turn):
         return {"status": "ok", "source": "local", "skipped": "trivial", "skills": [], "requests": 0}
     return None
+
+
+def _automatic_route(turn: str) -> str:
+    """Conservative current-request syntax, not a semantic or history classifier.
+
+    The main agent can still call select/design/decision on demand for any
+    appropriate request. Quoted examples do not authorize automatic inference.
+    """
+    text = re.sub(r"(?ms)^\s*(`{3,}|~{3,})[^\n]*\n.*?^\s*\1[^\n]*(?:\n|$)", "", turn)
+    text = re.sub(r"(?m)^\s*>.*$", "", text)
+    if re.search(r"(?<![\w/])[$/]jev(?![\w-])", text):
+        return "on_demand"
+    if re.search(r"(?<![\w/])[$/][A-Za-z][A-Za-z0-9_.:-]*(?![\w-])", text):
+        return "explicit_skill"
+    if _settled_design(turn):
+        return "settled_design"
+    target = r"(?:skills?|workflows?|design[ -]modes?)\b"
+    question = r"\b(?:which|what)\s+(?:(?:available|installed)\s+)?" + target
+    command = (r"(?:^|\n)\s*(?:(?:can|could|would) you\s+)?(?:please\s+)?"
+               r"(?:help me\s+)?(?:choose|select|pick|recommend)\s+"
+               r"(?:(?:a|an|the|best|suitable|appropriate)\s+){0,3}" + target)
+    chinese_target = r"(?:skill\b|workflow\b|design[ -]mode\b|技能|工作流|设计模式)"
+    chinese = (r"(?:哪个|哪种|哪些)\s*[^。！？.!?\n]{0,24}" + chinese_target +
+               r"|(?:^|\n)\s*(?:请|帮我|请帮我)?(?:选择|挑选)[^。！？.!?\n]{0,24}" + chinese_target +
+               r"|" + chinese_target + r"\s*(?:应该|该|要)?\s*(?:选|用|选择)\s*(?:哪个|哪种|哪些)")
+    if re.search(question + "|" + command + "|" + chinese, text, flags=re.I):
+        return "routing_request"
+    return "automatic_scope_skipped"
 
 
 def _settled_design(turn: str, allowed=None) -> Optional[dict]:
@@ -384,7 +413,9 @@ def guidance(*, home: Optional[Path] = None) -> dict:
 
 
 def _write_hook_receipt(home: Path, event: dict, receipt: dict) -> None:
-    receipt = dict(receipt, adapter_version=VERSION, observation_id=uuid.uuid4().hex,
+    receipt = {"trigger_eligible": None, "trigger_reason": None, **receipt}
+    receipt = dict(receipt, adapter_version=VERSION, automatic_trigger_policy=AUTOMATIC_TRIGGER_POLICY,
+                   observation_id=uuid.uuid4().hex,
                    observation_source="manual_smoke" if event.get("_jev_invocation") == "manual_smoke" else "host_event",
                    session_id=event.get("session_id") if isinstance(event.get("session_id"), str) else None,
                    turn_id=event.get("turn_id") if isinstance(event.get("turn_id"), str) else None,
@@ -415,18 +446,28 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
         return {}
     home = home or codex_home()
     turn = event["prompt"]
+    started = time.monotonic()
     gated = _gate(turn)
     if gated:
-        _write_hook_receipt(home, event, gated)
+        _write_hook_receipt(home, event, dict(gated, ask_attempts=0, receipts=[], trigger_eligible=False,
+                            trigger_reason=gated.get("reason_code", gated.get("skipped")),
+                            duration_ms=int((time.monotonic() - started) * 1000)))
         return {}
-    started = time.monotonic()
+    route = _automatic_route(turn)
+    trigger = {"trigger_reason": route, "trigger_eligible": route == "routing_request"}
+    if route in ("automatic_scope_skipped", "on_demand"):
+        _write_hook_receipt(home, event, dict(status="ok", source="local", skills=[],
+                            reason_code=route, ask_attempts=0, receipts=[], **trigger,
+                            duration_ms=int((time.monotonic() - started) * 1000)))
+        return {}
+    selection_started = False
     try:
         catalog = local_catalog(home, Path(event.get("cwd") or Path.cwd()))
         config_file = home / "config.toml"
         config = tomllib.loads(config_file.read_text(encoding="utf-8-sig")) if config_file.exists() else {}
         plugins, catalog_source = codex_catalog.session_plugins(home, event, config)
         catalog = normalize_catalog(catalog + plugins)
-        fingerprint = hashlib.sha256(json.dumps([VERSION, turn, catalog], sort_keys=True).encode()).hexdigest()
+        fingerprint = hashlib.sha256(json.dumps([VERSION, AUTOMATIC_TRIGGER_POLICY, turn, catalog], sort_keys=True).encode()).hexdigest()
         # Only duplicate delivery of this exact turn may reuse a result. No cross-turn cache.
         ids = [event.get("session_id"), event.get("turn_id")]
         cache = home / "jev" / "turns" / (hashlib.sha256(json.dumps(ids).encode()).hexdigest() + ".json")
@@ -435,13 +476,21 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
         if reused:
             result = saved["result"]
         else:
-            result = (selector or select)(turn, catalog)
+            # Explicit/local routes must never fall through to an API request
+            # when the named skill is unavailable in this session's catalog.
+            if route == "explicit_skill" and not _explicit(turn, catalog):
+                result = fallback("explicit_skill_unavailable")
+            elif route == "settled_design" and not any(s["name"] == "design" for s in catalog):
+                result = fallback("design_skill_unavailable")
+            else:
+                selection_started = True
+                result = (selector or select)(turn, catalog)
             if ids[1]:
                 cache.parent.mkdir(parents=True, exist_ok=True)
                 temporary = cache.with_suffix("." + str(os.getpid()) + ".tmp")
                 temporary.write_text(json.dumps({"fingerprint": fingerprint, "result": result}), encoding="utf-8")
                 os.replace(str(temporary), str(cache))
-        receipt = {"status": result["status"], "source": result.get("source"),
+        receipt = {**trigger, "status": result["status"], "source": result.get("source"),
                    "reason_code": result.get("reason_code"),
                    "fingerprint": fingerprint, "cache_reused": reused,
                    "verification": result.get("verification"),
@@ -478,7 +527,9 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
                     "Do not rerun skill selection for this turn unless the task changes.")
         return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}
     except (OSError, ValueError, KeyError, TypeError):
-        _write_hook_receipt(home, event, fallback("catalog_unavailable"))
+        _write_hook_receipt(home, event, dict(fallback("catalog_unavailable"), **trigger,
+                            ask_attempts=None if selection_started else 0,
+                            duration_ms=int((time.monotonic() - started) * 1000)))
         return {}
 
 

@@ -8,8 +8,15 @@ from both `<codex-home>/skills` and `~/.agents/skills`, and disables their origi
 paths in Codex config. Backups stay under Codex home; shared-scope copies use a separate
 `retired/agents/` directory so matching names do not overwrite each other.
 
-`UserPromptSubmit` runs the selector before the main model. The hook recommends one
-skill and can include a design mode from the same stage-one request. The official
+`UserPromptSubmit` uses `routing-requests-v1`: model selection is limited to current
+requests explicitly asking which skill, workflow or design mode to choose. Ordinary
+execution and continuation skip before catalog discovery; fenced examples and
+blockquotes do not trigger it. Exact skill/design choices remain local and zero-call.
+`/jev` stays on demand, with `select`, `design` and `decision` available to the main
+agent. This conservative syntax gate is not a general ambiguity classifier.
+
+For eligible routing requests, the hook recommends one skill and can include a
+design mode from the same stage-one request. The official
 TypeSafe skill-suggestion recipe combines Choice with independent applicability Nouls,
 then verifies the top three using full descriptions and 700-character body excerpts.
 The 0.30 fit threshold follows the cookbook. The request-only 0.30 gate is recorded
@@ -54,7 +61,13 @@ Immutable metadata observations also live under `jev/observations/<UTC-date>/` f
 evaluation. They retain recipe/gate/fit values and excerpt hashes, never skill bodies.
 They prove suggestions, not actual skill loads or task success. Duplicate turn delivery
 can reuse a result only while candidate evidence is unchanged and records zero new
-attempts; later turns are reevaluated. Disable network selection with
+attempts; later eligible turns are reevaluated. No task-context deduplication is added.
+Receipts identify `automatic_trigger_policy`, `trigger_reason` and `trigger_eligible`.
+Keep old/new policy cohorts separate; local `automatic_scope_skipped` receipts are
+zero-call abstentions, not model no-matches. Observe subsequent native skill loads,
+actual procedure use, adoption, validation and outcomes, including sampled skips.
+Preserve unknown usage and distinguish API latency from recorded worker duration;
+neither measures complete user-visible delay. Disable network selection with
 `JEV_CODEX_OFF=1`; the main model continues normally.
 
 Upstream sync tests an exact merged candidate in isolated Linux/macOS/Windows jobs, then
