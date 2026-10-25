@@ -21,7 +21,7 @@ except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit s
 
 from . import client, codex_catalog, codex_skillpick, privacy, skillpick
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 AUTOMATIC_TRIGGER_POLICY = "routing-requests-v1"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
@@ -99,7 +99,7 @@ def normalize_catalog(rows: Any) -> List[Dict[str, str]]:
     return result
 
 
-def local_catalog(home: Path, cwd: Path) -> list:
+def local_catalog(home: Path, cwd: Path, *, explicit=()) -> list:
     """Conservative local scopes, not an assertion about session plugin availability."""
     if tomllib is None:
         raise ValueError("Python 3.11 or newer is required")
@@ -130,11 +130,12 @@ def local_catalog(home: Path, cwd: Path) -> list:
         for path in _entrypoints(root):
             if path.is_symlink() or path_key(path) in disabled:
                 continue
-            metadata = path.parent / "agents" / "openai.yaml"
-            if metadata.exists() and re.search(r"allow_implicit_invocation:\s*false\b", metadata.read_text(encoding="utf-8")):
-                continue
             with path.open(encoding="utf-8-sig") as stream:
                 fields = skillpick._front_matter(stream.read(8000))
+            metadata = path.parent / "agents" / "openai.yaml"
+            if (metadata.exists() and re.search(r"allow_implicit_invocation:\s*false\b", metadata.read_text(encoding="utf-8"))
+                    and fields.get("name") not in explicit):
+                continue
             if fields.get("name") and fields.get("description"):
                 rows.append({"name": fields["name"], "description": fields["description"], "path": str(path.absolute())})
     return normalize_catalog(rows)
@@ -161,8 +162,50 @@ def _entrypoints(root: Path):
             pending.append((child, depth + 1))
 
 
+def _request_text(turn: str) -> str:
+    """Remove metadata and literal examples before recognizing routing syntax."""
+    text = re.sub(r"(?is)<(in-app-browser-context|heartbeat)\b[^>]*>.*?</\1\s*>", "", turn)
+    lines, fence = [], None
+    for line in text.splitlines():
+        if fence:
+            if re.fullmatch(r"\s*" + re.escape(fence[0]) + "{" + str(len(fence)) + r",}\s*", line):
+                fence = None
+            lines.append("")
+            continue
+        opening = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if opening:
+            fence = opening[1]
+            lines.append("")
+        else:
+            lines.append("" if re.match(r"^\s*>", line) else line)
+    text = "\n".join(lines)
+    text = re.sub(r"(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)", "", text)
+    text = re.sub(r"(?s)<!--.*?-->|</?[A-Za-z][^>]*>", "", text)
+    text = re.sub(r"(?m)^\s*\[[^\]\n]+\]:.*$", "", text)
+    # Keep a skill mention's visible label, never a command in its destination.
+    return re.sub(r"(!?)\[([^\]\n]*)\]\([^\n)]*\)",
+                  lambda match: "" if match[1] else match[2], text)
+
+
+def _explicit_names(turn: str) -> set:
+    text = _request_text(turn)
+    names = set()
+    token = r"(?<![A-Za-z0-9_.$/\\:<])([$/])([A-Za-z][A-Za-z0-9_.:-]{0,159})(?![A-Za-z0-9_.$:/\\?=#%~-])"
+    # Slash syntax is a leading command (optionally 'Use /skill'), not a path
+    # anywhere in prose. Bare /name in that position is inherently ambiguous;
+    # literal paths should be quoted, and $name is the unambiguous skill form.
+    for match in re.finditer(token, text):
+        if match[1] == "/":
+            prefix = text[text.rfind("\n", 0, match.start()) + 1:match.start()]
+            if not re.fullmatch(r"\s*(?:(?:please\s+)?use\s+|(?:请)?(?:使用|用)\s*)?", prefix, flags=re.I):
+                continue
+        names.add(match[2].rstrip(".:"))
+    return names
+
+
 def _explicit(turn: str, catalog: list) -> list:
-    return [s for s in catalog if re.search(r"(?<![\w/])[$/]" + re.escape(s["name"]) + r"(?![\w-])", turn)]
+    names = _explicit_names(turn)
+    return [s for s in catalog if s["name"] in names]
 
 
 def _gate(turn: str) -> Optional[dict]:
@@ -181,11 +224,11 @@ def _automatic_route(turn: str) -> str:
     The main agent can still call select/design/decision on demand for any
     appropriate request. Quoted examples do not authorize automatic inference.
     """
-    text = re.sub(r"(?ms)^\s*(`{3,}|~{3,})[^\n]*\n.*?^\s*\1[^\n]*(?:\n|$)", "", turn)
-    text = re.sub(r"(?m)^\s*>.*$", "", text)
-    if re.search(r"(?<![\w/])[$/]jev(?![\w-])", text):
+    text = _request_text(turn)
+    names = _explicit_names(turn)
+    if "jev" in names:
         return "on_demand"
-    if re.search(r"(?<![\w/])[$/][A-Za-z][A-Za-z0-9_.:-]*(?![\w-])", text):
+    if names:
         return "explicit_skill"
     if _settled_design(turn):
         return "settled_design"
@@ -250,6 +293,8 @@ def select(turn: str, catalog: list, *, ask_fn=None, allowed_design_modes=None, 
             if settled:
                 result["design"] = settled
         return result
+    if _explicit_names(turn):
+        return fallback("explicit_skill_unavailable")
     design_skill = next((s for s in catalog if s["name"] == "design"), None)
     settled = _settled_design(turn, allowed_design_modes) if design_skill else None
     if settled:
@@ -462,10 +507,11 @@ def hook(event: dict, *, home: Optional[Path] = None, selector=None) -> dict:
         return {}
     selection_started = False
     try:
-        catalog = local_catalog(home, Path(event.get("cwd") or Path.cwd()))
+        explicit = _explicit_names(turn) if route == "explicit_skill" else ()
+        catalog = local_catalog(home, Path(event.get("cwd") or Path.cwd()), explicit=explicit)
         config_file = home / "config.toml"
         config = tomllib.loads(config_file.read_text(encoding="utf-8-sig")) if config_file.exists() else {}
-        plugins, catalog_source = codex_catalog.session_plugins(home, event, config)
+        plugins, catalog_source = codex_catalog.session_plugins(home, event, config, explicit=explicit)
         catalog = normalize_catalog(catalog + plugins)
         fingerprint = hashlib.sha256(json.dumps([VERSION, AUTOMATIC_TRIGGER_POLICY, turn, catalog], sort_keys=True).encode()).hexdigest()
         # Only duplicate delivery of this exact turn may reuse a result. No cross-turn cache.
@@ -582,7 +628,8 @@ def main(argv=None) -> int:
             result = hook(payload)
         elif args.command == "select":
             catalog = payload.get("catalog")
-            result = select(payload["turn"], catalog if catalog is not None else local_catalog(codex_home(), Path.cwd()),
+            result = select(payload["turn"], catalog if catalog is not None else local_catalog(
+                                codex_home(), Path.cwd(), explicit=_explicit_names(payload["turn"])),
                             allowed_design_modes=payload.get("allowed_design_modes"))
         elif args.command == "design":
             result = design(payload["turn"], allowed=payload.get("allowed_modes"))

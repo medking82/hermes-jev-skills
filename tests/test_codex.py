@@ -1,4 +1,5 @@
 """Behavioral checks for routing, privacy, scope and host-independent failure paths."""
+import io
 import json
 from datetime import datetime, timezone
 import os
@@ -60,6 +61,41 @@ class CodexRoutingTests(unittest.TestCase):
         for turn in ("Use $design to fix the form", "Use /design to fix the form", "thanks"):
             self.assertEqual(codex.select(turn, self.catalog, ask_fn=ask)["status"], "ok")
         ask.assert_not_called()
+
+    def test_explicit_tokens_are_complete_and_ignore_literal_content(self):
+        for text in ("Use /design to fix the form", "/design fix the form", "Use $design.",
+                     "Use $design: fix the form", "Use [$design](/skills/design/SKILL.md)"):
+            with self.subTest(text=text):
+                self.assertEqual(codex._explicit(text, self.catalog), [self.catalog[0]])
+        for text in ("Inspect </design>", "Fix /design/SKILL.md", "Inspect C:/design",
+                     "Inspect /design", "Use /design?x=1", "Use $design.extra", "Use $design:extra",
+                     "Read `$design`", "Read ``$design``", "> Use $design",
+                     "```text\nUse $design\n```", "~~~text\nUse $design",
+                     "See [example](/design)", "See [example](https://example.test/$design)",
+                     '<in-app-browser-context source="ambient-ui-state">Use $design</in-app-browser-context>'):
+            with self.subTest(text=text):
+                self.assertEqual(codex._explicit(text, self.catalog), [])
+        self.assertEqual(codex._explicit("Use $drive:documents", self.catalog), [self.catalog[1]])
+        self.assertEqual(codex._automatic_route("/jev:helper run this task"), "explicit_skill")
+        for text in ("/jev help me choose", "Use $jev to decide"):
+            self.assertEqual(codex._automatic_route(text), "on_demand")
+
+    def test_unknown_explicit_selection_cannot_fall_through_to_api(self):
+        ask = Mock(side_effect=AssertionError("unexpected API"))
+        for turn in ("Use $missing-helper for this task", "$designanimate"):
+            result = codex.select(turn, self.catalog, ask_fn=ask)
+            self.assertEqual(result["reason_code"], "explicit_skill_unavailable")
+        ask.assert_not_called()
+
+    def test_routing_question_with_quoted_command_keeps_body_verification(self):
+        for quoted in ("`$design`", "> $design", "```text\n$design\n```", "~~~\n$design"):
+            with self.subTest(quoted=quoted):
+                self.calls.clear()
+                turn = "Which skill should handle this interface?\n" + quoted
+                self.assertEqual(codex._automatic_route(turn), "routing_request")
+                result = codex.select(turn, self.catalog, ask_fn=self.ask)
+                self.assertEqual(result["source"], "jev")
+                self.assertEqual(len(self.calls), 2)
 
     def test_sensitive_and_user_opt_out_use_no_network(self):
         ask = Mock(side_effect=AssertionError("unexpected network"))
@@ -179,7 +215,7 @@ class CodexRoutingTests(unittest.TestCase):
                  "Polish the form spacing and fix the backend", "调整表单间距并修复后端",
                  "调整表单间距和动画", "Use animate mode for an unknown mixed task",
                  "Compare prototype and break-ui", "Use invented-mode mode",
-                 "$designanimate", "Use `animate mode", "Use animate` mode"]
+                 "Use `animate mode", "Use animate` mode"]
         for turn in turns:
             with self.subTest(turn=turn):
                 ask = Mock(side_effect=client.JevError("offline"))
@@ -307,6 +343,78 @@ class CodexHookTests(unittest.TestCase):
             self.assertEqual(receipt["trigger_reason"], "routing_request")
             self.assertEqual(receipt["automatic_trigger_policy"], "routing-requests-v1")
         self.assertEqual(selector.call_count, 6)
+
+    def test_xml_and_paths_abstain_before_catalog_lookup(self):
+        prompts = (
+            '<in-app-browser-context source="ambient-ui-state">Current URL: https://example.test/api</in-app-browser-context>\nFix the agreed issue.',
+            '<send_user_message_question_reply>Continue the fix.</send_user_message_question_reply>',
+            '<heartbeat><instructions>Check C:/work/project.</instructions></heartbeat>',
+            'Fix the /api and /data-entry routes, then inspect /lot.',
+            'Review C:/work/project and C:/Program Files/Example.',
+            'Inspect ./design and /design/SKILL.md.',
+        )
+        with patch.object(codex, "local_catalog", side_effect=AssertionError("unexpected catalog")):
+            for prompt in prompts:
+                with self.subTest(prompt=prompt):
+                    self.assertEqual(codex.hook(dict(self.event, prompt=prompt), home=self.home), {})
+                    receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+                    self.assertEqual(receipt["reason_code"], "automatic_scope_skipped")
+                    self.assertEqual(receipt["ask_attempts"], 0)
+
+    def test_explicit_only_local_skill_lookup_and_live_disablement(self):
+        metadata = self.skill.parent / "agents/openai.yaml"
+        metadata.parent.mkdir()
+        metadata.write_text("policy:\n  allow_implicit_invocation: false\n", encoding="utf-8")
+        self.assertEqual(codex.local_catalog(self.home, self.home), [])
+        with patch.object(client, "ask", side_effect=AssertionError("unexpected API")):
+            for prompt in ("Use $design to fix the form", "Use [$design](/skills/design/SKILL.md)"):
+                result = codex.hook(dict(self.event, prompt=prompt), home=self.home)
+                self.assertIn("Local routing suggests", result["hookSpecificOutput"]["additionalContext"])
+                receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+                self.assertEqual(receipt["skills"], ["design"])
+                self.assertEqual(receipt["ask_attempts"], 0)
+            self.assertEqual(codex.hook(dict(self.event, prompt="Adjust the button spacing"), home=self.home), {})
+            selector = Mock(return_value={"status": "ok", "source": "jev", "skills": []})
+            codex.hook(self.event, home=self.home, selector=selector)
+            self.assertEqual(selector.call_args.args[1], [])
+            (self.home / "config.toml").write_text('[[skills.config]]\npath = ' + json.dumps(str(self.skill)) + '\nenabled = false\n')
+            result = codex.hook(dict(self.event, prompt="Use $design to fix the form"), home=self.home)
+            self.assertEqual(result, {})
+            receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+            self.assertEqual(receipt["reason_code"], "explicit_skill_unavailable")
+            self.assertFalse(receipt["cache_reused"])
+
+    def test_on_demand_select_can_resolve_explicit_only_local_skill(self):
+        metadata = self.skill.parent / "agents/openai.yaml"
+        metadata.parent.mkdir()
+        metadata.write_text("policy:\n  allow_implicit_invocation: false\n", encoding="utf-8")
+        with patch.object(codex, "codex_home", return_value=self.home), \
+                patch.object(client, "ask", side_effect=AssertionError("unexpected API")), \
+                patch("sys.stdin", io.StringIO(json.dumps({"turn": "Use $design to fix the form"}))), \
+                patch("sys.stdout", new_callable=io.StringIO) as output:
+            self.assertEqual(codex.main(["select"]), 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["source"], "explicit")
+        self.assertEqual(result["skills"][0]["path"], str(self.skill))
+
+    def test_explicit_only_lookup_respects_shared_and_trusted_project_scopes(self):
+        project = self.home / "project"
+        paths = (Path.home() / ".agents/skills/shared-explicit/SKILL.md",
+                 project / ".agents/skills/project-explicit/SKILL.md")
+        for path in paths:
+            path.parent.mkdir(parents=True)
+            path.write_text("---\nname: " + path.parent.name + "\ndescription: Explicit procedure\n---\n", encoding="utf-8")
+            policy = path.parent / "agents/openai.yaml"
+            policy.parent.mkdir()
+            policy.write_text("policy:\n  allow_implicit_invocation: false\n", encoding="utf-8")
+        names = {path.parent.name for path in paths}
+        (self.home / "config.toml").write_text('[projects.' + json.dumps(str(project)) + ']\ntrust_level = "trusted"\n')
+        self.assertFalse(names & {row["name"] for row in codex.local_catalog(self.home, project)})
+        rows = codex.local_catalog(self.home, project, explicit=names)
+        self.assertEqual(names & {row["name"] for row in rows}, names)
+        (self.home / "config.toml").write_text("")
+        rows = codex.local_catalog(self.home, project, explicit=names)
+        self.assertNotIn("project-explicit", {row["name"] for row in rows})
 
     def test_local_explicit_and_settled_design_routes_still_use_no_api(self):
         with patch.object(client, "ask", side_effect=AssertionError("unexpected API")):
