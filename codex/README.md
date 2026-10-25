@@ -57,13 +57,13 @@ input inside an active turn is not a substitute for an independent `UserPromptSu
 ## Runtime
 
 `UserPromptSubmit` runs before the model. Its worker gets a hard 3.5-second deadline.
-Adapter 0.3.0 uses the conservative `routing-requests-v1` automatic trigger: only a
+Adapter 0.3.1 retains the conservative `routing-requests-v1` automatic trigger: only a
 current request explicitly asking which skill, workflow or design mode to choose
 enters model selection. For example, "Which skill should handle this request?" and
 "这个任务应该用哪个 skill？" are eligible. Ordinary implementation, review, research
 and continuation requests skip selection before catalog discovery. This is a narrow
 English/Chinese syntax gate, not a general ambiguity classifier; it may abstain on
-other wording. Fenced examples and blockquotes do not open the gate.
+other wording. XML metadata, fenced/inline code and blockquotes do not open the gate.
 
 Acknowledgements, sensitive requests and user opt-outs also skip network selection.
 Explicit skill selections, whole commands naming an exact design mode and a narrow
@@ -71,6 +71,14 @@ component-polish grammar still route locally. An unavailable explicit skill neve
 falls through to Jev. `/jev` or `$jev` requests go to the main agent without a duplicate
 automatic call. The main agent retains the on-demand `select`, `design` and `decision`
 commands for useful ambiguous choices; their eligibility and questions are unchanged.
+
+Trigger detection and explicit lookup share the same command parser. `$skill` and
+`[$skill](path)` match the complete catalog ID, including plugin namespaces. Slash
+commands must lead a line, optionally after `Use`/`使用`; slash-containing paths,
+Windows drive paths, XML tags and link destinations are not commands. A bare `/name`
+in command position is inherently ambiguous: quote literal paths and use `$name`
+for an unambiguous skill choice. Quoted examples never become local explicit choices
+when a separate routing question reaches the selector.
 
 For an eligible routing request, the adapter follows TypeSafe's official
 [skill-suggestion recipe](https://docs.typesafe.ai/cookbooks/skill_suggestion):
@@ -101,8 +109,12 @@ project scopes, and plugins in this session's host-supplied available-skills cat
 It reads only the matching session's native rollout, verifies the active turn/cwd, and
 accepts only complete developer `skills_instructions` records. User/tool text cannot
 supply a catalog. Exact namespaced IDs and versioned paths are retained; unrelated plugin
-caches are never inventoried. Current per-skill/plugin disables, missing versions, and
-explicit-only metadata remove candidates even if an older host snapshot listed them.
+caches are never inventoried. Current per-skill/plugin disables and missing versions
+remove candidates even if an older host snapshot listed them. Following OpenAI's
+[invocation policy](https://learn.chatgpt.com/docs/build-skills#optional-metadata),
+`allow_implicit_invocation: false` removes a skill from implicit candidates while
+allowing an exact user choice to resolve locally. This exception admits only the
+explicitly named skills; it never bypasses disablement, project trust or host provenance.
 
 Discovery supports Codex's UUIDv7/date-partitioned rollout layout, reads at most the last
 32 MiB, and records the catalog timestamp/hash and admitted plugin IDs in the receipt.

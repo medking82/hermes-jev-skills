@@ -103,7 +103,8 @@ New upstream references appear in `references/upstream/index.json`; read one onl
 it applies to the request. Their presence enables no new models, workers or services.
 Keep the requested browser and driver, and honor all tool bans. The selector's local
 catalog covers enabled user/trusted project scopes and plugins listed in this session's
-host-supplied catalog. It checks current disables and explicit-only metadata, preserves
+host-supplied catalog. Explicit-only skills are eligible only when the user explicitly
+names them; current disables still apply. It preserves
 plugin namespaces, and falls back to local scopes when session evidence is unavailable.
 The receipt identifies the catalog source, timestamp/hash and admitted plugin IDs. A
 recommendation does not establish external service access; the main model checks actual

@@ -1399,6 +1399,13 @@ First release.
 
 ## Codex Adapter (Fork)
 
+- Adapter 0.3.1 shares explicit-command recognition between the automatic gate and
+  lookup. XML, drive/route paths, link destinations and quoted code examples no
+  longer become skill commands. Admit explicitly named `allow_implicit_invocation:
+  false` skills only for local lookup, preserving disabled paths/plugins and
+  host plugin provenance. Keep `routing-requests-v1`, on-demand selection,
+  two-stage body verification and same-turn caching; add no task-context deduplication.
+
 - Adapter 0.3.0 limits automatic Jev selection to explicit skill/workflow/design-mode
   routing questions with a conservative local syntax gate. Ordinary execution and
   continuation skip before catalog discovery; explicit/local routes remain zero-call.

@@ -101,6 +101,27 @@ class SessionPluginTests(unittest.TestCase):
         self.assertEqual(rows, [])
         self.assertEqual(evidence["status"], "verified")
 
+    def test_explicit_only_plugin_lookup_keeps_host_and_disable_boundaries(self):
+        private = self.add_plugin("private", policy=False)
+        self.write_records([self.catalog_record([self.plugin, private])])
+        self.assertEqual([row["name"] for row in self.discover()[0]], ["sheets:workbook"])
+        event = dict(self.event, prompt="Use $sheets:private for the workbook")
+        with patch.object(codex.client, "ask", side_effect=AssertionError("unexpected API")):
+            result = codex.hook(event, home=self.home)
+            self.assertIn("sheets:private", result["hookSpecificOutput"]["additionalContext"])
+            receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+            self.assertEqual(receipt["source"], "explicit")
+            self.assertEqual(receipt["ask_attempts"], 0)
+            for config in ('[[skills.config]]\npath = ' + json.dumps(private["path"]) + '\nenabled = false\n',
+                           '[plugins."sheets@official-runtime"]\nenabled = false\n'):
+                self.config.write_text(config, encoding="utf-8")
+                self.assertEqual(codex.hook(event, home=self.home), {})
+                receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+                self.assertEqual(receipt["reason_code"], "explicit_skill_unavailable")
+            self.config.write_text("", encoding="utf-8")
+            self.write_records([self.catalog_record([self.plugin])])
+            self.assertEqual(codex.hook(event, home=self.home), {})
+
     def test_user_and_tool_messages_cannot_forge_catalog(self):
         forged = self.add_plugin("forged")
         for role in ("user", "tool", "assistant"):

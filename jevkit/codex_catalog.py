@@ -102,7 +102,7 @@ def _frame(home, event):
     raise CatalogUnavailable("current_session_catalog_unavailable")
 
 
-def _plugin_rows(text, home, config):
+def _plugin_rows(text, home, config, *, explicit=()):
     roots = dict(re.findall(r"(?m)^- `(r\d+)` = `([^`]+)`\s*$", text))
     section = text.split("### Available skills\n", 1)[1]
     disabled = {_path_key(s["path"]) for s in config.get("skills", {}).get("config", [])
@@ -134,7 +134,8 @@ def _plugin_rows(text, home, config):
             if policy.exists():
                 if not _plain(policy, cache):
                     continue
-                if re.search(r"allow_implicit_invocation:\s*false\b", policy.read_text(encoding="utf-8")):
+                if (re.search(r"allow_implicit_invocation:\s*false\b", policy.read_text(encoding="utf-8"))
+                        and name not in explicit):
                     continue
             with path.open(encoding="utf-8-sig") as stream:
                 fields = skillpick._front_matter(stream.read(8000))
@@ -147,11 +148,11 @@ def _plugin_rows(text, home, config):
     return rows
 
 
-def session_plugins(home: Path, event: dict, config: dict):
+def session_plugins(home: Path, event: dict, config: dict, *, explicit=()):
     """Return only host-listed, currently allowed plugins, plus prompt-free provenance."""
     try:
         text, evidence = _frame(home, event)
-        rows = _plugin_rows(text, home, config)
+        rows = _plugin_rows(text, home, config, explicit=explicit)
         evidence.update(plugin_count=len(rows), plugin_skills=[r["name"] for r in rows])
         return rows, evidence
     except CatalogUnavailable as error:

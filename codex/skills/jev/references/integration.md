@@ -12,6 +12,12 @@ paths in Codex config. Backups stay under Codex home; shared-scope copies use a 
 requests explicitly asking which skill, workflow or design mode to choose. Ordinary
 execution and continuation skip before catalog discovery; fenced examples and
 blockquotes do not trigger it. Exact skill/design choices remain local and zero-call.
+Command recognition is shared with lookup: XML tags, drive/route paths, code examples
+and link destinations do not supply skill commands. Slash commands must lead a line
+(optionally after `Use`/`使用`); prefer `$skill` for unambiguous invocation. Explicitly
+named `allow_implicit_invocation: false` skills can resolve locally, while remaining
+excluded from automatic candidates. Disabled skills/plugins and host provenance
+checks still apply.
 `/jev` stays on demand, with `select`, `design` and `decision` available to the main
 agent. This conservative syntax gate is not a general ambiguity classifier.
 
