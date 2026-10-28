@@ -171,8 +171,57 @@ class CodexRoutingTests(unittest.TestCase):
             return {"answers": {"mode": {"choice": "mobile-native", "confidence": .8}}}
         self.assertEqual(codex.design("Fix mobile scroll", ask_fn=ask)["mode"], "mobile-native")
 
+    def test_impeccable_joins_the_existing_modes_without_changing_opt_ins(self):
+        existing = {"emil-design-eng", "animate", "animate-expo", "animation-performance",
+                    "animation-vocabulary", "apple-design", "mobile-native", "ask-sonner",
+                    "write-swift", "find-animation-opportunities", "improve-animations",
+                    "break-ui", "review-animations", "pick-ui-library", "prototype"}
+        self.assertEqual(set(codex.DESIGN_MODES), existing | {"impeccable"})
+        self.assertEqual(codex.EXPLICIT_DESIGN,
+                         {"break-ui", "review-animations", "pick-ui-library", "prototype"})
+        defaults = codex._design_options()
+        self.assertIn("impeccable", defaults)
+        self.assertFalse(set(defaults) & codex.EXPLICIT_DESIGN)
+
+    def test_impeccable_can_be_selected_by_both_design_entrypoints(self):
+        turn = "Choose a design mode for a distinctive UI; keep the selected model and do not use the browser."
+
+        def ask(state, questions, **kwargs):
+            if "mode" in questions:
+                self.assertIn("impeccable", questions["mode"]["criteria"])
+                self.assertIn("do not use the browser", state["request"])
+                self.assertEqual(kwargs["retries"], 0)
+                self.assertEqual(kwargs["provider"], "synthetic-provider")
+                return {"answers": {"mode": {"choice": "impeccable", "confidence": .8}}}
+            reply = self.ask(state, questions, **kwargs)
+            if "design_mode" in questions:
+                self.assertIn("impeccable", questions["design_mode"]["criteria"])
+                self.assertFalse(set(questions["design_mode"]["criteria"]) & codex.EXPLICIT_DESIGN)
+                self.assertEqual(kwargs["provider"], "synthetic-provider")
+                reply["answers"]["design_mode"] = {"choice": "impeccable", "confidence": .8}
+            return reply
+
+        with patch.dict(os.environ, {"JEV_PROVIDER": "synthetic-provider"}):
+            direct = codex.design(turn, ask_fn=ask)
+            combined = codex.select(turn, self.catalog, ask_fn=ask)
+        self.assertEqual((direct["mode"], direct["source"]), ("impeccable", "jev"))
+        self.assertEqual((combined["design"]["mode"], combined["design"]["source"]), ("impeccable", "jev"))
+        self.assertEqual(combined["skills"][0]["name"], "design")
+        self.assertEqual(len(self.calls), 2)
+
+    def test_impeccable_respects_allowed_modes_and_existing_failure_fallback(self):
+        def excluded(state, questions, **kwargs):
+            self.assertNotIn("impeccable", questions["mode"]["criteria"])
+            return {"answers": {"mode": {"choice": "impeccable", "confidence": .9}}}
+        result = codex.design("Choose a UI direction", allowed=["animate"], ask_fn=excluded)
+        self.assertEqual((result["mode"], result["source"]), ("emil-design-eng", "fallback"))
+        for error in ("timeout", "malformed", "no_key"):
+            result = codex.design("Choose a UI direction", ask_fn=Mock(side_effect=client.JevError(error)))
+            self.assertEqual((result["status"], result["reason_code"], result["mode"]),
+                             ("fail_open", error, "emil-design-eng"))
+
     def test_design_low_confidence_and_unknown_choice_use_existing_default(self):
-        for choice, confidence in (("animate", .1), ("invented-mode", .99)):
+        for choice, confidence in (("animate", .1), ("impeccable", .1), ("invented-mode", .99)):
             reply = {"answers": {"mode": {"choice": choice, "confidence": confidence}}}
             self.assertEqual(codex.design("Improve the interface", ask_fn=Mock(return_value=reply))["mode"], "emil-design-eng")
 
@@ -182,6 +231,7 @@ class CodexRoutingTests(unittest.TestCase):
 
     def test_settled_design_cases_make_no_calls_in_both_entrypoints(self):
         cases = [("Use animate mode.", "animate"), ("使用 mobile-native 模式。", "mobile-native"),
+                 ("Use impeccable mode.", "impeccable"),
                  ("animation-performance", "animation-performance"),
                  ("Polish the form's spacing and button feedback.", "emil-design-eng"),
                  ("Adjust the button spacing", "emil-design-eng"),
@@ -305,6 +355,7 @@ class CodexHookTests(unittest.TestCase):
             "Implement the agreed fix and run the regression tests.",
             "Review the diff for correctness.",
             "Find the latest official documentation.",
+            "Create a distinctive UI direction without using a browser or running an audit.",
             "Assess whether the application can work offline.",
             "继续按已经确定的方案完成实现和验证。",
             "看看这两个问题后来有没有修复。",
@@ -448,6 +499,36 @@ class CodexHookTests(unittest.TestCase):
         self.assertEqual(receipt["ask_attempts"], 2)
         self.assertEqual(receipt["verification"]["recipe"], "typesafe-skill-suggestion-v1")
         self.assertGreater(receipt["verification"]["evidence"][0]["body_chars"], 0)
+
+    def test_hook_surfaces_impeccable_only_as_a_design_routing_hint(self):
+        calls = []
+
+        def ask(state, questions, **kwargs):
+            calls.append(questions)
+            if "design_mode" in questions:
+                self.assertIn("impeccable", questions["design_mode"]["criteria"])
+                answers = {"which": {"probabilities": {"design": .9, "__no_match__": .1}},
+                           "gate::acts_on_user_system": {"noul": .9},
+                           "gate::would_follow_documented_procedure": {"noul": .9},
+                           "gate::prose_suffices": {"noul": .1},
+                           "design_mode": {"choice": "impeccable", "confidence": .8}}
+            else:
+                answers = {"fits::design": {"noul": .9}}
+            return {"answers": answers, "latency_ms": 4, "input_tokens": 20,
+                    "usage": {"output_tokens": 3}, "jev_model": "synthetic"}
+
+        self.skill.write_text("---\nname: design\ndescription: Polish interfaces\n---\n"
+                              "Inspect the existing interface before editing.\n", encoding="utf-8")
+        event = dict(self.event, prompt="Which design mode fits a distinctive UI? Keep the model; no browser.")
+        with patch.object(client, "ask", side_effect=ask):
+            output = codex.hook(event, home=self.home)
+        hint = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Suggested design mode: impeccable.", hint)
+        self.assertIn("Preserve explicit model", hint)
+        self.assertIn("tool bans", hint)
+        self.assertEqual(len(calls), 2)
+        receipt = json.loads((self.home / "jev/last-hook.json").read_text())
+        self.assertEqual(receipt["design"]["mode"], "impeccable")
 
     def test_duplicate_turn_reuses_result_but_changed_task_and_catalog_do_not(self):
         selector = Mock(return_value={"status": "ok", "source": "jev", "skills": [

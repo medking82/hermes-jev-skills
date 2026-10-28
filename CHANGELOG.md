@@ -1399,6 +1399,10 @@ First release.
 
 ## Codex Adapter (Fork)
 
+- Adapter 0.3.2 adds `impeccable` as a design-mode candidate for UI creative
+  direction, preserving the other modes, explicit opt-ins, trigger and fallbacks.
+  The matching `$design` guide remains a separate deployment dependency.
+
 - Adapter 0.3.1 shares explicit-command recognition between the automatic gate and
   lookup. XML, drive/route paths, link destinations and quoted code examples no
   longer become skill commands. Admit explicitly named `allow_implicit_invocation:

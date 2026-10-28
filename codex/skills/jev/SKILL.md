@@ -61,7 +61,8 @@ Reading guidance does not authorize a disabled or explicit-only skill or any new
    selection means no catalog skill was selected. `fail_open` means decide normally.
 3. For an ambiguous design mode, use `design` with `{"turn":"UI request"}` and read
    that mode in `$design`. Explicit mode names and clear single-mode requests need
-   no call. When the hook supplies a design mode, reuse it. See
+   no call. `impeccable` is the creative-direction mode, not permission for extra
+   tools or workflows. When the hook supplies a design mode, reuse it. See
    [Design Routing](references/design.md).
 4. For another consequential but narrow choice, use `decision` with
    `{"state":{...},"question":"one literal question","options":{"a":"...","b":"..."}}`.

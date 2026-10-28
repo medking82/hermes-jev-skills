@@ -21,10 +21,11 @@ except ImportError:  # The adapter supports Python 3.11+; the upstream toolkit s
 
 from . import client, codex_catalog, codex_skillpick, privacy, skillpick
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 AUTOMATIC_TRIGGER_POLICY = "routing-requests-v1"
 DESIGN_MODES = {
     "emil-design-eng": "General component polish, spacing, accessibility and interaction feedback",
+    "impeccable": "Creative direction and distinctive visual design for UI surfaces, respecting the existing identity and task scope",
     "animate": "Implement web motion and transitions",
     "animate-expo": "Implement React Native or Expo motion, gestures and haptics",
     "animation-performance": "Fix jank or dropped frames in existing web animation",

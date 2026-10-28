@@ -57,7 +57,7 @@ input inside an active turn is not a substitute for an independent `UserPromptSu
 ## Runtime
 
 `UserPromptSubmit` runs before the model. Its worker gets a hard 3.5-second deadline.
-Adapter 0.3.1 retains the conservative `routing-requests-v1` automatic trigger: only a
+Adapter 0.3.2 retains the conservative `routing-requests-v1` automatic trigger: only a
 current request explicitly asking which skill, workflow or design mode to choose
 enters model selection. For example, "Which skill should handle this request?" and
 "这个任务应该用哪个 skill？" are eligible. Ordinary implementation, review, research
@@ -96,6 +96,13 @@ An independent design-mode question still shares stage one's request. The commun
 selector is unchanged. At most one skill is suggested, and verified no-match has its
 own advisory sentence; an outage remains silent fail-open. No hint overrides an
 explicit selection or mandatory skill instruction, loads a skill, or executes a tool.
+
+The design-mode candidates include `impeccable` for UI creative direction and
+distinctive visual design alongside the existing 15 modes. It refers to the matching
+`$design` guide; a missing guide falls back to the main model's judgment. It adds no
+installer, hook, browser, audit or prototype authorization. The four explicit-only
+modes still require an actual opt-in, and ordinary implementation does not trigger
+automatic selection.
 
 Only shortlisted, already-admitted entrypoints are opened; linked resources are not
 followed. Reads are bounded to 16,000 characters, descriptions to 8,000 and body excerpts
