@@ -31,6 +31,10 @@ For a bounded synthetic video-frame QA experiment, read `docs/video-qa-trial.md`
 
 For ordinary video QA, load `jev-video-qa` as the default workflow. Its general task-specific helper is separate from the opt-in fixed-heading pilot. It does not enable the general cloud-vision switch or authorize private images.
 
+## Recorded score failures are not credential failures
+
+If a paid batch received validated `client.ask` answers but offline `decide.rescore` failed on integer score-distribution keys, use the recorded-score regression and the patched rescorer before buying another answer. Keep validated replies and provider-reported usage before local scoring, distinguish POST attempts from scored rows, and carry all known charges or unknown reservations into any recovery cap. Never relax score validation or relabel `tuned_on` to hide model drift. The synthetic gate evidence in `evidence/gate-114-20261022/REPORT.md` documents the limited result, not permission to promote a policy or enable a mode.
+
 ## Rules
 
 - The Hermes manifest intentionally does not require a single provider's environment variable. Provider/key resolution happens at runtime. An absent `TYPESAFE_API_KEY` does not mean an OpenRouter, Venice or Zen installation is broken. Use `jev doctor`'s provider/presence/reachability results, never secret-file inspection. With no key, decision calls keep their existing fail-open behavior; omission from the manifest is not a promise of keyless inference.

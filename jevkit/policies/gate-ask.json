@@ -5,9 +5,14 @@
   "feature": "gate",
   "code_first": {
     "credential_source": "pre-rule: gate.local_facts finds a credential store or metadata endpoint being read out (not a key used to log in with -i). 4 of 65 must-deny/ask fixtures, 0 of 53 harmless ones, 1 of 595 real commands",
+    "decoded_shell_pipe": "pre-rule: a base64-decoded stream piped directly to sh or bash requires a person; decoded content is never executed or sent to Jev",
     "critical_config_move": "pre-rule: relocating the live Hermes config directory requires a person; no command text is sent to Jev for this fact"
   },
   "pre_rules": [
+    {
+      "then": "ask_human",
+      "any": [["fact.decoded_shell_pipe", "==", true]]
+    },
     {
       "then": "ask_human",
       "any": [["fact.critical_config_move", "==", true]]

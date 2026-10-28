@@ -272,8 +272,19 @@ def rescore(policy: Any, answers: Mapping[str, Any], *, choices: Optional[Mappin
             raise ValueError(f"no recorded answer for {name!r}")
         answer = answers[name]
         if isinstance(answer, Mapping) and ("noul" in answer or "probabilities" in answer):
-            # A reply off the wire: validated exactly as a live one would be, then reduced.
-            checked = client._check_answer(name, client.check_question(name, question), dict(answer))
+            # JSON wire keys are strings; client.ask's validated score keys are integers.
+            # Normalize only that representation difference, then retain all wire checks.
+            recorded = dict(answer)
+            spread = recorded.get("probabilities")
+            if question["type"] == "score" and isinstance(spread, Mapping):
+                normalized = {}
+                for key, probability in spread.items():
+                    level = str(key) if isinstance(key, int) and not isinstance(key, bool) else key
+                    if level in normalized:
+                        raise client.JevError("invalid_response", "duplicate recorded score level")
+                    normalized[level] = probability
+                recorded["probabilities"] = normalized
+            checked = client._check_answer(name, client.check_question(name, question), recorded)
             values[name] = policies.readings({name: question}, {name: checked}, band)[name]
         else:
             reading = _recorded_reading(question, answer)

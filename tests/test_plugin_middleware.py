@@ -5,7 +5,10 @@ so these tests never touch the network, the real decision log or the real key.
 """
 import importlib.util
 import sys
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
@@ -107,6 +110,76 @@ class RoutingMiddlewareTests(unittest.TestCase):
             request={"messages": [{"role": "user", "content": HARD}], "model": DEFAULT},
             session_id="s6", turn_id="t1", model=DEFAULT, provider="openrouter")
         self.assertIsNone(result)
+
+    def test_cached_decision_cannot_cross_provider_endpoint_or_model(self):
+        for changed in ({"provider": "custom"}, {"base_url": "http://other/v1"},
+                        {"model": "user-pin"}, {"request_model": "user-pin"}):
+            with self.subTest(changed=changed):
+                self.turn("binding", "t1", DEFAULT)
+                args = {"provider": "openrouter", "model": DEFAULT, "base_url": ""}
+                args.update({k: v for k, v in changed.items() if k != "request_model"})
+                request = {"model": changed.get("request_model", DEFAULT), "messages": []}
+                original = dict(request)
+                before = len(self.decisions)
+                self.assertIsNone(plugin._on_llm_request(
+                    request=request, session_id="binding", turn_id="t1", **args))
+                self.assertEqual(request, original)
+                self.assertEqual(len(self.decisions), before)
+                self.assertEqual(self.logs[-1]["compatibility"], "request_context_changed")
+
+    def test_unchanged_model_is_not_counted_as_applied(self):
+        with mock.patch.object(plugin.route, "decide", return_value={
+                "routed": True, "model": f"openrouter:{DEFAULT}", "model_id": DEFAULT}):
+            self.assertIsNone(self.turn("same", "t1", DEFAULT))
+        self.assertFalse(self.logs[-1]["applied"])
+
+    def test_context_change_invalidates_routing_until_next_turn(self):
+        for mode in ("on", "shadow"):
+            for changed in ({"provider": "custom"}, {"base_url": "http://other/v1"},
+                            {"model": "user-pin"}, {"request_model": "user-pin"}):
+                with self.subTest(mode=mode, changed=changed), mock.patch.object(
+                        plugin, "_setting", lambda name, default: mode if name == "routing" else default):
+                    self.turn("sticky", "t1", DEFAULT)
+                    plugin._TURNS["sticky"]["effort"] = "high"
+                    before = len(self.decisions)
+                    changed_args = {"provider": "openrouter", "model": DEFAULT, "base_url": ""}
+                    changed_args.update({k: v for k, v in changed.items() if k != "request_model"})
+                    for args, request_model in [
+                        (changed_args, changed.get("request_model", DEFAULT)),
+                        ({"provider": "openrouter", "model": DEFAULT}, DEFAULT),
+                        (changed_args, changed.get("request_model", DEFAULT)),
+                    ]:
+                        request = {"model": request_model, "messages": []}
+                        original = dict(request)
+                        self.assertIsNone(plugin._on_llm_request(
+                            request=request, session_id="sticky", turn_id="t1", **args))
+                        self.assertEqual(request, original)
+                        self.assertFalse(self.logs[-1]["applied"])
+                    self.assertEqual(len(self.decisions), before)
+                    self.assertNotIn("effort", plugin._TURNS["sticky"])
+                    with mock.patch.object(plugin, "_setting", return_value="on"):
+                        self.assertIsNone(plugin._on_transform_output("answer", session_id="sticky"))
+                    # Invalidating one session must not poison another, or the next turn.
+                    self.turn("other-session", "t1", DEFAULT)
+                    self.turn("sticky", "t2", DEFAULT)
+                    self.assertEqual(len(self.decisions), before + 2)
+
+    def test_endpoint_binding_is_not_logged(self):
+        plugin._on_pre_llm_call(session_id="url", turn_id="t1", user_message=HARD)
+        plugin._on_llm_request(request={"model": DEFAULT}, model=DEFAULT,
+                               provider="openrouter", session_id="url", turn_id="t1",
+                               base_url="http://user:private-sentinel@localhost/v1")
+        self.assertNotIn("private-sentinel", repr(self.logs))
+
+    def test_malformed_named_alias_fails_closed(self):
+        for alias in ({"dracarys": "openrouter"}, ["openrouter"], None, "bad:prefix"):
+            with self.subTest(alias=alias):
+                plugin._on_pre_llm_call(session_id="invalid", turn_id="t1", user_message=HARD)
+                with mock.patch.object(plugin.route, "load_config", return_value={
+                        "provider_aliases": {"custom": alias}}):
+                    self.assertIsNone(plugin._on_llm_request(
+                        request={"model": DEFAULT}, model=DEFAULT, provider="custom",
+                        session_id="invalid", turn_id="t1"))
 
     def test_custom_provider_without_mapping_is_not_routed_across_providers(self):
         plugin._on_pre_llm_call(session_id="custom", turn_id="t1", user_message=HARD)
@@ -221,6 +294,126 @@ class EffortMiddlewareTests(unittest.TestCase):
         result = self.turn()
         self.assertEqual(result["request"]["reasoning_effort"], "xhigh")
         self.assertNotIn("extra_body", result["request"])
+
+    def test_configured_effort_isolated_after_every_context_change(self):
+        self.enable_for()
+        for responses in (False, True):
+            for changed in ({"provider": "custom"}, {"base_url": "http://other/v1"},
+                            {"model": "user-pin"}, {"request_model": "user-pin"}):
+                with self.subTest(responses=responses, changed=changed):
+                    extra = {"input": [], "reasoning": {"summary": "auto"}} if responses else {}
+                    if responses:
+                        first = self.codex_turn(session="isolation", reasoning={"summary": "auto"})
+                    else:
+                        first = self.turn(session="isolation")
+                    outgoing = first["request"]
+                    self.assertEqual(outgoing["reasoning"]["effort"] if responses
+                                     else outgoing["reasoning_effort"], "xhigh")
+                    for restore in (False, True, False):
+                        args = {"model": DEFAULT, "provider": "openrouter", "base_url": ""}
+                        if not restore:
+                            args.update({k: v for k, v in changed.items() if k != "request_model"})
+                        request = {"model": DEFAULT if restore else changed.get("request_model", DEFAULT), **extra}
+                        if not responses:
+                            request["messages"] = []
+                        original = deepcopy(request)
+                        self.assertIsNone(plugin._on_llm_request(
+                            request=request, session_id="isolation", turn_id="t1", **args))
+                        self.assertEqual(request, original)
+                        self.assertNotIn("effort", plugin._TURNS["isolation"])
+                    with mock.patch.object(plugin, "_setting", return_value="on"):
+                        self.assertIsNone(plugin._on_transform_output("answer", session_id="isolation"))
+
+    def paused_callback(self, pause_target):
+        """Run one request with a deterministic RPC/effort pause, never a sleep."""
+        self.enable_for()
+        plugin._on_pre_llm_call(session_id="race", turn_id="t1", user_message=HARD)
+        entered, release = threading.Event(), threading.Event()
+        original = getattr(*pause_target)
+
+        def paused(*args, **kwargs):
+            if not entered.is_set():
+                entered.set()
+                if not release.wait(10):
+                    raise AssertionError("test did not release paused callback")
+            return original(*args, **kwargs)
+
+        return entered, release, mock.patch.object(*pause_target, side_effect=paused)
+
+    def race_request(self, **changes):
+        args = {"model": DEFAULT, "provider": "openrouter", "base_url": ""}
+        args.update({k: v for k, v in changes.items() if k not in ("request_model", "turn_id")})
+        request = {"model": changes.get("request_model", DEFAULT), "messages": []}
+        return plugin._on_llm_request(request=request, session_id="race",
+                                      turn_id=changes.get("turn_id", "t1"), **args)
+
+    def test_inflight_router_cannot_publish_after_context_change(self):
+        for changed in ({"provider": "custom"}, {"base_url": "http://other/v1"},
+                        {"model": "user-pin"}, {"request_model": "user-pin"}):
+            with self.subTest(changed=changed):
+                entered, release, pause = self.paused_callback((plugin.route, "decide"))
+                logs = []
+                with pause as router, mock.patch.object(plugin, "_log", logs.append), ThreadPoolExecutor(1) as pool:
+                    first = pool.submit(self.race_request)
+                    try:
+                        self.assertTrue(entered.wait(5))
+                        self.assertIsNone(self.race_request(**changed))
+                    finally:
+                        release.set()
+                    self.assertIsNone(first.result(timeout=5))
+                    self.assertEqual(router.call_count, 1)
+                self.assertTrue(plugin._TURNS["race"]["route_invalidated"])
+                self.assertIsNone(plugin._TURNS["race"]["decision"])
+                self.assertNotIn("effort", plugin._TURNS["race"])
+                self.assertFalse(any(row.get("applied") for row in logs))
+                self.assertFalse(any(row.get("kind") == "effort" for row in logs))
+
+    def test_same_context_inflight_callback_keeps_request_without_duplicate_rpc(self):
+        entered, release, pause = self.paused_callback((plugin.route, "decide"))
+        with pause as router, ThreadPoolExecutor(1) as pool:
+            first = pool.submit(self.race_request)
+            try:
+                self.assertTrue(entered.wait(5))
+                self.assertIsNone(self.race_request())
+            finally:
+                release.set()
+            result = first.result(timeout=5)
+            self.assertEqual(result["request"]["reasoning_effort"], "xhigh")
+            self.assertEqual(router.call_count, 1)
+        self.assertFalse(plugin._TURNS["race"].get("route_invalidated", False))
+
+    def test_inflight_router_cannot_overwrite_replacement_turn(self):
+        for new_id in ("t2", "t1"):
+            with self.subTest(new_turn_id=new_id):
+                entered, release, pause = self.paused_callback((plugin.route, "decide"))
+                with pause, ThreadPoolExecutor(1) as pool:
+                    first = pool.submit(self.race_request)
+                    try:
+                        self.assertTrue(entered.wait(5))
+                        plugin._on_pre_llm_call(session_id="race", turn_id=new_id, user_message=HARD)
+                        replacement = plugin._TURNS["race"]
+                        new_request = self.race_request(turn_id=new_id)
+                        self.assertEqual(new_request["request"]["reasoning_effort"], "xhigh")
+                    finally:
+                        release.set()
+                    self.assertIsNone(first.result(timeout=5))
+                self.assertIs(plugin._TURNS["race"], replacement)
+                self.assertEqual(replacement["effort"], "xhigh")
+
+    def test_inflight_effort_pick_cannot_apply_after_invalidation(self):
+        entered, release, pause = self.paused_callback((plugin.effort, "pick"))
+        logs = []
+        with pause, mock.patch.object(plugin, "_log", logs.append), ThreadPoolExecutor(1) as pool:
+            first = pool.submit(self.race_request)
+            try:
+                self.assertTrue(entered.wait(5))
+                self.assertIsNone(self.race_request(base_url="http://other/v1"))
+            finally:
+                release.set()
+            self.assertIsNone(first.result(timeout=5))
+        self.assertNotIn("effort", plugin._TURNS["race"])
+        self.assertFalse(any(row.get("applied") for row in logs))
+        self.assertFalse(any(row.get("kind") == "effort" for row in logs))
 
     def test_opt_in_without_model_capability_does_not_mutate(self):
         self.effort_config = {"effort": {"enabled": True}}

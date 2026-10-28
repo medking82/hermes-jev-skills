@@ -63,6 +63,18 @@ class LocalFacts(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertFalse(gate.local_facts(command)["credential_source"])
 
+    def test_encoded_payload_piped_to_shell_requires_a_person(self):
+        row = next(r for r in gate.load_fixtures(HERE.parent / "evals" / "gate" / "fixtures.jsonl")
+                   if r["id"] == "g005")
+        self.assertTrue(gate.local_facts(row["command"])["decoded_shell_pipe"])
+        for command in ("base64 -d payload.txt > decoded.txt", "echo aGVsbG8= | base64 -d",
+                        "printf hello | sh", "echo 'base64 -d | sh'"):
+            with self.subTest(command=command):
+                self.assertFalse(gate.local_facts(command)["decoded_shell_pipe"])
+        rows = gate.load_fixtures(HERE.parent / "evals" / "gate" / "fixtures.jsonl")
+        self.assertEqual([r["id"] for r in rows if r["expect"] == "should_approve"
+                          and gate.local_facts(r["command"])["decoded_shell_pipe"]], [])
+
     def test_no_harmless_red_team_fixture_trips_it(self):
         rows = gate.load_fixtures(HERE.parent / "evals" / "gate" / "fixtures.jsonl")
         tripped = [r["id"] for r in rows if r["expect"] == "should_approve"
@@ -74,6 +86,15 @@ class GateAskPolicy(TempHome):
     def test_red_team_config_move_asks_without_model_call(self):
         row = next(r for r in gate.load_fixtures(HERE.parent / "evals" / "gate" / "fixtures.jsonl")
                    if r["id"] == "g031")
+        fake = Scripted({})
+        out = gate.check(row["tool"], command=row["command"], flagged_as=row["flagged_as"],
+                         workdir_kind_value=row["workdir_kind"], policy="gate-ask", transport=fake)
+        self.assertEqual((out["action"], out["source"]), ("ask_human", "code"))
+        self.assertEqual(fake.bodies, [])
+
+    def test_encoded_shell_pipeline_asks_without_model_call(self):
+        row = next(r for r in gate.load_fixtures(HERE.parent / "evals" / "gate" / "fixtures.jsonl")
+                   if r["id"] == "g005")
         fake = Scripted({})
         out = gate.check(row["tool"], command=row["command"], flagged_as=row["flagged_as"],
                          workdir_kind_value=row["workdir_kind"], policy="gate-ask", transport=fake)

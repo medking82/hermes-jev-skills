@@ -4,6 +4,36 @@ Codex adapter changes are recorded in [Fork Notes](#codex-adapter-fork).
 
 ## Unreleased
 
+## 0.25.1 (2026-10-23)
+
+Released by the daily Jev steward: 10 commit(s) on main since v0.25.0.
+
+- Integrate PR #51 (thanks @fatalmonk): bind routing reuse to request context, invalidate changed-context turns, suppress stale notices and provide offline audit/evaluation tools. Preserve current 0.25.1 metadata instead of the older proposed 0.24.1. Close a review-discovered initial-request mismatch: retain an outgoing model that disagrees with host metadata, with no classifier call or later revival in that turn. No live-mode activation or provider entitlement claim.
+
+- Extend the ask-only decoded-shell pre-rule to standalone and absolute-path base64 decoders, macOS `-D`, shell basenames/absolute paths (`sh`, `bash`, `zsh`, `dash`, `ksh`) and a direct `env` shell wrapper. Fresh Jev 1.14 replay reproduced a `zsh` false approve before this change; keep the detector advisory and shadow behavior unchanged. Add no-network family/benign-boundary regressions. Qualification details and remaining promotion limits are in `evals/gate/QUALIFICATION-1.14.md`.
+
+**Changes and fixes**
+
+- fix(routing): bind cached decisions to request context (766112d)
+- docs: record upstream reconciliation and final validation (3bbf2f1)
+- fix(routing): invalidate changed turns and validate evaluation provenance (9ee6de0)
+- fix(gate): ask before decoded stream reaches shell (9340daf)
+- fix(gate): ask before decoded stream reaches shell (87b1577)
+- fix: rescore validated score distributions and publish bounded synthetic gate evidence (7edc270)
+- test: track the allowlisted synthetic corpus and outcome projections (2e931ad)
+- Qualify Jev 1.14 gates and cover decoded shell families (d685a10)
+- Separate shipping the guard from policy-mode promotion (657e3b7)
+- Retain explicit outgoing models before first routing decision (e3655be)
+
+## 0.25.1
+
+Development candidate; no release tag or policy promotion is implied.
+
+- Fix offline rescoring of `client.ask` score answers whose validated probability keys are integers. Normalize that representation only, retain strict score validation and duplicate-level refusal, preserve model-drift fallback and caller-owned data. Add offline round-trip, malformed-recording and drift regressions.
+- Publish a sanitized, frozen synthetic Jev 1.14 gate evaluation: 24 held-out and 118 development cases, zero false approvals, one harmless-case deferral. Retain the prior local-scoring failure in the 137-request accounting. No threshold, mode, `tuned_on` or privacy-boundary changes; no new paid calls.
+
+- Require a human prompt for a base64-decoded stream piped directly to sh/bash in the ask-only command gate. This local fact catches red-team fixture g005 without decoding, executing or forwarding its content; add a no-model regression and harmless-fixture guard. Shadow remains unchanged.
+
 ## 0.25.0 (2026-10-20)
 
 Released by the daily Jev steward: 15 commit(s) on main since v0.24.0.
@@ -49,6 +79,13 @@ Released by the daily Jev steward: 15 commit(s) on main since v0.24.0.
 - Retain video QA frame and write-ahead attempt receipts (10beadc)
 - Record actual 40-home video QA default readback (e9e391c)
 - Wire truthful daily stewardship and counterbalance future A/B collections (d70ae3f)
+
+### Historical PR #51 proposal (2026-10-20; not released)
+
+- Bind cached routing decisions to provider, endpoint and model context; count actual request-model changes and add offline audit/evaluation tools. Custom identity enablement remains blocked pending host and gateway evidence. Prepared patch version; not deployed by this work.
+- Follow up PR #51 review: invalidate routing for the remainder of a changed-context turn, suppress stale routing/effort notices, distinguish audited installed 0.20.0 from repository base 0.24.0, and exclude synthetic/unclassified evaluation pairs while requiring structured cost and human-review provenance.
+- Close PR #51 concurrent routing/effort races: claim context before classification, keep simultaneous followers unchanged, and revalidate turn identity and binding before publishing a decision or committing request changes. Add deterministic configured-effort and concurrent-turn regressions.
+
 
 ## 0.24.0 (2026-10-16)
 

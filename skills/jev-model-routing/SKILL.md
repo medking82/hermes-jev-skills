@@ -14,7 +14,7 @@ Jev reads a turn and answers three questions in one ~0.4 s request: how hard is 
 
 ## On Hermes it is automatic
 
-With the `hermes-jev` plugin enabled, each fresh user turn is routed once, before the first model call. Tool-loop follow-ups reuse that decision. Switches, per profile:
+With the `hermes-jev` plugin enabled, each fresh user turn is routed once, before the first model call. Tool-loop follow-ups reuse that decision only while provider, endpoint, host model and outgoing request model remain unchanged. A mismatch disables routing for the rest of that turn, including an A → B → A return, without buying another classifier answer. If the first outgoing model disagrees with host metadata, retain the outgoing request and do not classify; equivalent provider prefixes are normalized. The next turn resets the decision. Endpoint bindings stay in memory and are not written to telemetry. Switches, per profile:
 
 ```
 /jev                    status

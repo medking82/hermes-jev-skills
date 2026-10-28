@@ -1,0 +1,74 @@
+{
+  "base_main": "e66a915bc12c691234a91128edbc05861d4cea0e",
+  "contributor_head": "9ee6de083a9419efdf929dfa3ab92163b7be9ce4",
+  "checks": [
+    {
+      "name": "py39",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 42.919,
+      "tests_run": 1642
+    },
+    {
+      "name": "py311",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 58.509,
+      "tests_run": 1642
+    },
+    {
+      "name": "dashboard",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "router-dashboard/tests"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 3.52,
+      "tests_run": 71
+    },
+    {
+      "name": "release",
+      "command": [
+        "python",
+        "scripts/check_release.py"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 1.32
+    }
+  ],
+  "code_source_sha256": "cd50cdd8e03bc5e12817d68e8ed3d3542656c393cd0628aaa695b30d6ea70a69",
+  "code_source_hash_files": [
+    "hermes/plugin/hermes-jev/__init__.py",
+    "scripts/audit_routing.py",
+    "scripts/compare_routing_eval.py",
+    "scripts/replay_routing_eval.py",
+    "skills/jev-model-routing/SKILL.md",
+    "tests/test_plugin_middleware.py",
+    "tests/test_routing_initial_context.py"
+  ],
+  "isolated_install_preview_and_real": true,
+  "installed_model_mismatch_no_rpc": true,
+  "isolated_config_unchanged": true,
+  "real_install": false,
+  "merge_to_main": false,
+  "routing_activation": false,
+  "review_type": "self-review; historical contributor review claims not independently certified"
+}
