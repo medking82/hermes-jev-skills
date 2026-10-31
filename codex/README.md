@@ -197,14 +197,10 @@ skill loading, task completion or realized cost savings. Keep generated reports 
 intact except the small `skillpick.ask_fn` injection seam; Codex-specific files live
 under `codex/`, `jevkit/codex.py` and `tests/test_codex*.py`.
 
-The same scheduled pipeline also checks `https://github.com/typesafe-ai/skills.git`.
+The same scheduled sync also checks `https://github.com/typesafe-ai/skills.git`.
 Its `skills/typesafe-ai` Markdown/MIT-license files are pinned under
 `vendor/typesafe-ai/`, with source provenance and byte-preserving Git attributes.
-An official-only change creates a candidate even when Hermes is unchanged. The bundle
-includes the official Git objects, so verification/publication can compare the copied
-bytes to the exact official source commit without fetching new content with write
-credentials. The result artifact records both upstream identities, and the local
-updater checks the official commit against the candidate snapshot before tests/install.
+An official-only change creates a commit even when Hermes is unchanged.
 
 New scripts, invocation metadata, symlinks/executable file modes, license/identity changes,
 rewritten official history and oversized/unsupported files stop the update for manual
@@ -220,39 +216,28 @@ no provider/network call and writes nothing; missing, linked or modified inputs 
 without changing routing. Future accepted reference updates therefore change the returned
 guidance, while protected adapter behavior remains reviewed code. Delivery of the content
 is verifiable; semantic compliance by a future model still needs task-specific evidence.
-Existing stop issues and local blocked state apply to both sources; adding this source
-never clears an earlier stop. A separately authorized implementation PR can install
-the initial accepted snapshot while retaining that stopped automatic-update state.
+The local blocked state applies to both sources; adding this source never clears an
+earlier stop.
 
 To verify the pinned package offline, run `python -B codex/official.py verify`; add
 `--live` to compare it to the actual official Git commit. `refresh` updates only the
 intact owned snapshot on an explicitly selected maintenance branch; it installs nothing.
 
-`Codex Upstream Sync` runs daily at 02:23 UTC (10:23 MYT), or on manual dispatch.
-Confirm its actual state with `gh api repos/medking82/hermes-jev-skills/actions/workflows/codex-upstream-sync.yml`;
-the YAML schedule alone does not establish that GitHub has enabled it.
+`Sync fork with upstream` (`.github/workflows/fork-sync-upstream.yml`) runs every six
+hours, or on manual dispatch. It is a plain fork sync (Owner decision, 2026-10-31): it
+merges `kerpopule/hermes-jev-skills` main, refreshes the official TypeSafe reference,
+pushes ordinary commits to main without force, and then dispatches `test.yml` for the new
+main (pushes made with `GITHUB_TOKEN` start no push workflows). A merge conflict, an
+official-reference refusal or a rejected push fails the run, and GitHub emails the Owner;
+the GA401 schedule watchdog reports a schedule that stops firing. Confirm its actual state
+with `gh api repos/medking82/hermes-jev-skills/actions/workflows/fork-sync-upstream.yml`.
 
-The workflow prepares an exact candidate containing the upstream merge, then tests that
-same bundle on Linux/macOS (Python 3.9/3.13) and Windows (3.11/3.13). Candidate jobs have
-read-only tokens, no persisted checkout credentials and no user API keys. A separate job
-running the approved base code receives write permission only after every test passes.
-It rechecks bundle identity, ancestry, protected controls and unchanged fork main, then
-makes an ordinary fast-forward push of the tested commit. It never force-pushes or
-bypasses branch protection. Validation is inside this workflow: publication does not
-depend on a second workflow being triggered by `GITHUB_TOKEN`.
-
-Changes to `codex/`, `jevkit/codex*`, `tests/test_codex*`, `.github/`, `AGENTS.md`,
-`.gitattributes`, `.gitmodules` or `vendor/typesafe-ai/.gitattributes` require manual maintenance. These include the umbrella,
-hook, authorization boundaries, installer and updater itself. Ordinary upstream toolkit
-and reference updates can pass automatically. Other public Jev implementations remain
-research inputs, never automatic executable update sources.
-
-A conflict, protected-control change, failed/cancelled test or publication failure creates
-one assigned **Jev Upstream Sync Stopped** issue with a run link. An open stop issue blocks
-subsequent integrations. Resolve the cause and explicitly close it to resume. If issue
-creation itself fails, the failed Actions run remains visible and the local updater also
-checks the latest main-branch run. `validate_current=true` exercises every pipeline job
-without inventing an upstream change or changing main when upstream is already included.
+Testing gates installation, not merging. Changes to `codex/`, `jevkit/codex*`,
+`tests/test_codex*`, `.github/`, `AGENTS.md`, `.gitattributes`, `.gitmodules` or
+`vendor/typesafe-ai/.gitattributes` can reach fork main, but the local updater refuses to
+install them until they are reviewed and re-enrolled. These include the umbrella, hook,
+authorization boundaries, installer and updater itself. Other public Jev implementations
+remain research inputs, never automatic executable update sources.
 
 ### Local Windows Update
 
@@ -264,12 +249,12 @@ hidden VBS/PowerShell launchers and the actual `python.exe`. No console window, 
 provider call, purchased credit or GPU worker is used by the updater. The computer must
 be awake and that Windows user logged in; missed runs start when available.
 
-The updater accepts only a descendant fork main with a successful exact-commit
-`jev-sync-result` artifact from the approved upstream workflow. It tests in a temporary
-clone and isolated profile before advancing clean local main and applying the approved
-transactional installer. Unknown/missing owned files, local edits, an unclean/non-main
-checkout, rewritten history, missing proof, changed controls or config/hook/retirement
-changes stop it. Config and hooks must stay byte-identical; existing disables,
+The updater accepts only a descendant fork main whose exact commit passed `test.yml` on
+GitHub. It then tests in a temporary clone and isolated profile before advancing clean
+local main and applying the approved transactional installer. GitHub tests that are still
+running or failed only defer the update; a later passing commit installs. Unknown/missing
+owned files, local edits, an unclean/non-main checkout, rewritten history, changed controls
+or config/hook/retirement changes stop it. Config and hooks must stay byte-identical; existing disables,
 explicit-only policies and trust remain in force. The task never enrolls new controls
 or trusts a hook automatically. Existing installer backups are retained.
 
@@ -281,8 +266,8 @@ source advances, its transaction restores the runtime; source/runtime reconcilia
 then manual, so no user changes are reset. Manually approved fork changes to maintenance
 controls require explicit re-enrollment after installing the new accepted main.
 Temporary network outages only defer the local check until its next ordinary schedule;
-they never install anything or add a retry loop. Authentication/permission failures remain
-stops, as do merge conflicts and failed tests.
+they never install anything or add a retry loop. Authentication/permission failures and failed
+local tests remain stops.
 
 ### Receipt Reporting And GitHub Alerts
 
@@ -314,7 +299,7 @@ one reporting-unavailable notice per outage (there can be up to nine hours' dela
 It cannot distinguish an offline PC from both tasks being disabled, and does not infer
 tests failed, tests passed or an installation. Known deferred offline state stays quiet.
 Canary devices are separate and excluded from scheduled liveness checks. No receiver
-or alert resumes, installs, merges, closes a stop issue or repairs anything. The former
+or alert resumes, installs, merges or repairs anything. The former
 chat heartbeat is retired only after live production receipts and deduplication pass.
 
 ## Validation

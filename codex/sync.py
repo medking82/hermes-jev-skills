@@ -5,20 +5,17 @@ import argparse
 from contextlib import contextmanager
 import hashlib
 import importlib.util
-import io
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
 import time
-import zipfile
 
 import official
 
-from upstream import (FORK, WORKFLOW, STOP_TITLE, StopUpdate, commit, controls, git,
+from upstream import (FORK, TEST_WORKFLOW, StopUpdate, commit, controls, git,
                       require_ancestor, write_json)
 
 RUNNERS = ("sync.py", "upstream.py", "official.py", "invoke-sync.ps1", "invoke-hidden.vbs",
@@ -126,48 +123,20 @@ def validate_preview(preview):
         raise StopUpdate("update would change config, hook trust definition or retire skills; manual review required")
 
 
-def server_state(get=api):
-    workflow = get("actions/workflows/" + WORKFLOW)
-    if workflow.get("state") != "active":
-        raise StopUpdate("GitHub upstream schedule is not active")
-    # Query the complete paginated open-issue set; do not depend on search indexing.
-    for page in range(1, 101):
-        issues = get("issues?state=open&per_page=100&page=" + str(page))
-        if any(i.get("title") == STOP_TITLE and "pull_request" not in i for i in issues):
-            raise StopUpdate("GitHub upstream integration has an open stop notice")
-        if len(issues) < 100:
-            break
-    else:
-        raise StopUpdate("open issue scan exceeded its bound")
-    runs = get("actions/workflows/" + WORKFLOW + "/runs?branch=main&per_page=50")["workflow_runs"]
-    applicable = [r for r in runs if r.get("head_branch") == "main" and r.get("event") in {"schedule", "workflow_dispatch"}]
-    if applicable and applicable[0].get("conclusion") in {"failure", "cancelled", "timed_out", "action_required", "startup_failure"}:
-        raise StopUpdate("latest GitHub upstream run did not succeed: " + applicable[0]["html_url"])
-    return workflow, applicable
+def test_proof(candidate, get=api):
+    """Return the passing GitHub `test.yml` run for exactly this commit.
 
-
-def publication_proof(candidate, workflow, runs, get=api):
+    Pending or failed GitHub tests defer without a sticky stop: a later passing commit installs.
+    """
+    path = ".github/workflows/" + TEST_WORKFLOW
+    runs = get("actions/workflows/" + TEST_WORKFLOW + "/runs?head_sha=" + candidate + "&per_page=50")["workflow_runs"]
+    runs = [r for r in runs if r.get("head_sha") == candidate and r.get("path") == path]
     for run in runs:
-        if (run.get("status") != "completed" or run.get("conclusion") != "success"
-                or run.get("workflow_id") != workflow["id"]
-                or run.get("path") != ".github/workflows/" + WORKFLOW):
-            continue
-        artifacts = get("actions/runs/" + str(run["id"]) + "/artifacts?per_page=100")["artifacts"]
-        artifacts = [a for a in artifacts if a.get("name") == "jev-sync-result" and not a.get("expired")]
-        if len(artifacts) != 1 or not 0 < artifacts[0]["size_in_bytes"] < 65536:
-            continue
-        raw = get("actions/artifacts/" + str(artifacts[0]["id"]) + "/zip", raw=True)
-        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-            if archive.namelist() != ["result.json"] or archive.getinfo("result.json").file_size > 16384:
-                raise StopUpdate("unexpected publication artifact")
-            proof = json.loads(archive.read("result.json"))
-        if (proof.get("candidate") == candidate and proof.get("repository") == FORK
-                and proof.get("workflow") == WORKFLOW and str(proof.get("run_id")) == str(run["id"])
-                and proof.get("base") == run.get("head_sha") and proof.get("status") in {"updated", "unchanged"}):
-            commit(proof["base"])
-            commit(proof["upstream"])
-            return dict(proof, run_url=run["html_url"])
-    raise StopUpdate("fork main has no successful exact-commit upstream publication proof; manual enrollment required")
+        if run.get("status") == "completed" and run.get("conclusion") == "success":
+            return run["html_url"]
+    if any(r.get("status") != "completed" for r in runs):
+        raise DeferredUpdate("GitHub tests for the new commit are still running; installed release retained")
+    raise DeferredUpdate("no passing GitHub tests for the new commit yet; installed release retained")
 
 
 def native_tests(stage, temporary):
@@ -211,7 +180,6 @@ def _update(state, *, apply, get, test, progress):
     if controls(repo, before) != state["controls"]:
         raise StopUpdate("approved maintenance controls changed")
     saved = snapshots(home)
-    workflow, runs = server_state(get)
     fetch_main(repo)
     candidate = commit(git(repo, "rev-parse", "FETCH_HEAD"))
     progress["commit"] = candidate
@@ -220,13 +188,9 @@ def _update(state, *, apply, get, test, progress):
     require_ancestor(repo, before, candidate)
     if controls(repo, candidate) != state["controls"]:
         raise StopUpdate("fork update changes approved controls; manual enrollment required")
-    proof = publication_proof(candidate, workflow, runs, get)
-    progress["run_url"] = proof["run_url"]
+    run_url = test_proof(candidate, get)
+    progress["run_url"] = run_url
     reference, _ = official.at_revision(repo, candidate)
-    if proof.get("official") != reference["commit"]:
-        raise StopUpdate("publication proof does not match the pinned official reference")
-    require_ancestor(repo, proof["base"], candidate)
-    require_ancestor(repo, proof["upstream"], candidate)
     cache = repo / ".cache/jev-sync"
     cache.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="candidate-", dir=cache) as temporary:
@@ -242,7 +206,7 @@ def _update(state, *, apply, get, test, progress):
         validate_preview(preview)
         if not apply:
             return {"status": "ready", "commit": candidate, "changed_files": preview["changed_files"],
-                    "run_url": proof["run_url"], "warning": preview["warning"]}
+                    "run_url": run_url, "warning": preview["warning"]}
         if clean_main(repo) != before or snapshots(home) != saved:
             raise StopUpdate("source or runtime configuration changed during validation")
         installed(home)  # Recheck every owned file immediately before mutation.
@@ -260,7 +224,7 @@ def _update(state, *, apply, get, test, progress):
             raise StopUpdate("post-install configuration mismatch")
         return {"status": "updated", "commit": candidate, "previous_commit": before,
                 "official_source": reference["commit"],
-                "run_url": proof["run_url"], "backup": report["backup"], "owned_files": len(final["files"])}
+                "run_url": run_url, "backup": report["backup"], "owned_files": len(final["files"])}
 
 
 @contextmanager
@@ -330,7 +294,7 @@ def main():
         result = {"status": "deferred", "reason": str(error), "event_id": str(time.time_ns()),
                   "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         write_json(runtime / "last-run.json", result)
-    except (OSError, ValueError, KeyError, TypeError, StopUpdate, subprocess.SubprocessError, zipfile.BadZipFile) as error:
+    except (OSError, ValueError, KeyError, TypeError, StopUpdate, subprocess.SubprocessError) as error:
         result = {"status": "stopped", "reason": str(error), "event_id": str(time.time_ns()),
                   "commit": getattr(error, "commit", None), "run_url": getattr(error, "run_url", None),
                   "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}

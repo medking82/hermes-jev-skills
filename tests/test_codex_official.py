@@ -89,28 +89,14 @@ class OfficialReferenceTests(GitFixture):
             official.refresh(self.repo, upstream=str(self.official))
         self.assertEqual(official.checkout(self.repo)[0], previous)
 
-    def test_official_only_update_uses_tested_bundle_publication(self):
+    def test_official_only_update_is_committed_by_the_fork_sync(self):
         self.write(self.official, "skills/typesafe-ai/references/new.md", "# Official Update\n")
         self.save(self.official)
-        data = self.prepare()
+        data = self.sync()
         self.assertEqual(data["changed"], "true")
         self.assertEqual(data["upstream"], self.base)
         self.assertEqual(data["official"], upstream.git(self.official, "rev-parse", "HEAD"))
-        upstream.git(self.repo, "checkout", "--detach", self.base)
-        result = upstream.publish(self.repo, self.artifact, self.root / "result.json")
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), result["candidate"])
-        self.assertEqual(official.at_revision(self.repo, result["candidate"])[0]["commit"], data["official"])
-
-    def test_bundle_with_wrong_official_commit_cannot_publish(self):
-        self.candidate()
-        path = self.artifact / "candidate.json"
-        data = json.loads(path.read_text())
-        data["official"] = self.base
-        upstream.write_json(path, data)
-        upstream.git(self.repo, "checkout", "--detach", self.base)
-        with self.assertRaisesRegex(upstream.StopUpdate, "official reference"):
-            upstream.publish(self.repo, self.artifact, self.root / "result.json")
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
+        self.assertEqual(official.at_revision(self.repo, data["head"])[0]["commit"], data["official"])
 
     def test_path_traversal_nested_skill_and_reserved_names_are_rejected(self):
         for name in ("../SKILL.md", "references/../../x.md", "references/SKILL.md", "references/CON.md", "references/a\\b.md"):

@@ -1,6 +1,5 @@
 """Offline acceptance tests for the exact-commit update and fail-stop boundaries."""
 import importlib.util
-import io
 import json
 import os
 from pathlib import Path
@@ -10,7 +9,6 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "codex"))
@@ -52,7 +50,6 @@ class GitFixture(unittest.TestCase):
         upstream.git(self.other, "config", "user.email", "test@example.invalid")
         upstream.git(self.other, "config", "commit.gpgsign", "false")
         upstream.git(self.repo, "remote", "add", "origin", str(self.remote))
-        self.artifact = self.root / "artifact"
 
     def write(self, repo, name, text):
         path = repo / name
@@ -63,75 +60,59 @@ class GitFixture(unittest.TestCase):
         upstream.git(repo, "add", ".")
         upstream.git(repo, "commit", "-m", "Synthetic fixture")
 
-    def candidate(self):
+    def sync(self):
+        return upstream.sync(self.repo, upstream=str(self.other), official_upstream=str(self.official))
+
+    def head(self, repo):
+        return upstream.git(repo, "rev-parse", "HEAD")
+
+
+class UpstreamSyncTests(GitFixture):
+    def test_unchanged_upstream_reports_no_change(self):
+        result = self.sync()
+        self.assertEqual(result["changed"], "false")
+        self.assertEqual(self.head(self.repo), self.base)
+
+    def test_upstream_change_is_merged_but_never_pushed(self):
         self.write(self.other, "engine.txt", "new upstream\n")
         self.save(self.other)
-        return self.prepare()
+        result = self.sync()
+        self.assertEqual(result["changed"], "true")
+        self.assertEqual((self.repo / "engine.txt").read_text(), "new upstream\n")
+        self.assertEqual(result["upstream"], self.head(self.other))
+        # The workflow pushes; the helper itself never changes the remote.
+        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
 
-    def prepare(self, **kwargs):
-        return upstream.prepare(self.repo, self.artifact, upstream=str(self.other),
-                                official_upstream=str(self.official), **kwargs)
-
-
-class UpstreamIntegrationTests(GitFixture):
-    def test_unchanged_skips_publication(self):
-        result = self.prepare()
-        self.assertEqual(result["changed"], "false")
-        self.assertFalse(self.artifact.exists())
-
-    def test_validated_bundle_publishes_exact_candidate(self):
-        data = self.candidate()
-        upstream.git(self.repo, "checkout", "--detach", self.base)
-        result = upstream.publish(self.repo, self.artifact, self.root / "result.json")
-        self.assertEqual(result["candidate"], data["candidate"])
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), data["candidate"])
+    def test_fork_changes_are_kept_by_a_merge(self):
+        self.write(self.repo, "fork.txt", "fork only\n")
+        self.save(self.repo)
+        self.write(self.other, "engine.txt", "new upstream\n")
+        self.save(self.other)
+        result = self.sync()
+        self.assertEqual(result["changed"], "true")
+        self.assertEqual((self.repo / "fork.txt").read_text(), "fork only\n")
+        self.assertEqual((self.repo / "engine.txt").read_text(), "new upstream\n")
 
     def test_conflict_preserves_main_and_aborts_merge(self):
         self.write(self.repo, "engine.txt", "fork choice\n")
         self.save(self.repo)
-        fork = upstream.git(self.repo, "rev-parse", "HEAD")
+        fork = self.head(self.repo)
         self.write(self.other, "engine.txt", "upstream choice\n")
         self.save(self.other)
         with self.assertRaisesRegex(upstream.StopUpdate, "conflict"):
-            self.prepare()
-        self.assertEqual(upstream.git(self.repo, "rev-parse", "HEAD"), fork)
+            self.sync()
+        self.assertEqual(self.head(self.repo), fork)
         self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
 
-    def test_control_change_requires_manual_review(self):
-        self.write(self.other, "codex/authorization.py", "# changed control\n")
-        self.save(self.other)
-        with self.assertRaisesRegex(upstream.StopUpdate, "manual review"):
-            self.prepare()
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
-
-    def test_moved_main_is_not_overwritten(self):
-        self.candidate()
-        upstream.git(self.repo, "checkout", "--detach", self.base)
-        self.write(self.repo, "user.txt", "concurrent change\n")
-        self.save(self.repo)
-        raced = upstream.git(self.repo, "rev-parse", "HEAD")
-        upstream.git(self.repo, "push", "origin", raced + ":main")
-        upstream.git(self.repo, "checkout", "--detach", self.base)
-        with self.assertRaisesRegex(upstream.StopUpdate, "advanced"):
-            upstream.publish(self.repo, self.artifact, self.root / "result.json")
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), raced)
-
-    def test_bundle_identity_mismatch_cannot_publish(self):
-        self.candidate()
-        data = json.loads((self.artifact / "candidate.json").read_text())
-        data["candidate"] = self.base
-        upstream.write_json(self.artifact / "candidate.json", data)
-        upstream.git(self.repo, "checkout", "--detach", self.base)
-        with self.assertRaisesRegex(upstream.StopUpdate, "tested commit"):
-            upstream.publish(self.repo, self.artifact, self.root / "result.json")
-        self.assertEqual(upstream.git(self.remote, "rev-parse", "main"), self.base)
-
-    def test_validate_current_exercises_pipeline_without_pushing_change(self):
-        data = self.prepare(validate_current=True)
-        self.assertEqual(data["candidate"], self.base)
-        result = upstream.publish(self.repo, self.artifact, self.root / "result.json")
-        self.assertEqual(result["status"], "unchanged")
+    def test_official_reference_change_is_committed(self):
+        self.write(self.official, "skills/typesafe-ai/SKILL.md",
+                   "---\nname: typesafe-ai\nlicense: MIT\n---\n\n# Updated Synthetic Reference\n")
+        self.save(self.official)
+        result = self.sync()
+        self.assertEqual(result["changed"], "true")
+        self.assertEqual(result["official"], self.head(self.official))
+        self.assertEqual(official.checkout(self.repo)[0]["commit"], self.head(self.official))
+        self.assertEqual(upstream.git(self.repo, "status", "--porcelain"), "")
 
 
 @unittest.skipIf(sys.version_info < (3, 11), "Local Codex updater requires Python 3.11+")
@@ -184,24 +165,13 @@ class LocalUpdateTests(GitFixture):
         self.calls = []
 
     def get(self, endpoint, **kwargs):
-        if endpoint == "actions/workflows/" + upstream.WORKFLOW:
-            return {"id": 99, "state": "active"}
-        if endpoint.startswith("issues?"):
-            return []
-        if "/runs?" in endpoint:
-            return {"workflow_runs": [{"id": 17, "workflow_id": 99, "head_branch": "main", "event": "schedule",
-                    "status": "completed", "conclusion": "success", "head_sha": self.base,
-                    "path": ".github/workflows/" + upstream.WORKFLOW, "html_url": "https://example.invalid/run/17"}]}
-        if endpoint.endswith("/artifacts?per_page=100"):
-            return {"artifacts": [{"id": 25, "name": "jev-sync-result", "size_in_bytes": 600, "expired": False}]}
-        if endpoint == "actions/artifacts/25/zip":
-            stream = io.BytesIO()
-            with zipfile.ZipFile(stream, "w") as archive:
-                archive.writestr("result.json", json.dumps({"repository": upstream.FORK, "workflow": upstream.WORKFLOW,
-                    "official": official.checkout(self.repo)[0]["commit"],
-                    "candidate": self.head, "base": self.base, "upstream": self.head, "run_id": "17", "status": "updated"}))
-            return stream.getvalue()
+        if endpoint.startswith("actions/workflows/" + upstream.TEST_WORKFLOW + "/runs?head_sha="):
+            sha = endpoint.split("head_sha=", 1)[1].split("&", 1)[0]
+            return {"workflow_runs": [dict(self.test_run, head_sha=sha)] if sha == self.head else []}
         self.fail("unexpected endpoint " + endpoint)
+
+    test_run = {"id": 17, "status": "completed", "conclusion": "success",
+                "path": ".github/workflows/test.yml", "html_url": "https://example.invalid/run/17"}
 
     def run_update(self, **kwargs):
         return self.sync.update(self.state, apply=True, get=self.get,
@@ -251,45 +221,24 @@ class LocalUpdateTests(GitFixture):
         self.assertEqual((self.repo / "engine.txt").read_text(), "user edits\n")
         self.assertEqual(self.calls, [])
 
-    def test_disabled_schedule_stops_without_applying(self):
-        original = self.get
-        def disabled(endpoint, **kwargs):
-            return {"id": 99, "state": "disabled_manually"} if endpoint.endswith(upstream.WORKFLOW) else original(endpoint, **kwargs)
-        with self.assertRaisesRegex(upstream.StopUpdate, "not active"):
-            self.sync.update(self.state, apply=True, get=disabled)
+    def test_pending_github_tests_defer_without_applying(self):
+        with patch.object(self, "test_run", dict(self.test_run, status="in_progress", conclusion=None)):
+            with self.assertRaisesRegex(self.sync.DeferredUpdate, "still running"):
+                self.run_update()
         self.assert_not_applied()
+        self.assertEqual(self.calls, [])
 
-    def test_open_stop_notice_stops_without_applying(self):
-        original = self.get
-        def stopped(endpoint, **kwargs):
-            return [{"title": upstream.STOP_TITLE}] if endpoint.startswith("issues?") else original(endpoint, **kwargs)
-        with self.assertRaisesRegex(upstream.StopUpdate, "stop notice"):
-            self.sync.update(self.state, apply=True, get=stopped)
+    def test_failed_github_tests_defer_without_applying(self):
+        with patch.object(self, "test_run", dict(self.test_run, conclusion="failure")):
+            with self.assertRaisesRegex(self.sync.DeferredUpdate, "no passing GitHub tests"):
+                self.run_update()
         self.assert_not_applied()
+        self.assertEqual(self.calls, [])
 
-    def test_unproven_main_cannot_install(self):
-        original = self.get
-        def no_proof(endpoint, **kwargs):
-            return {"artifacts": []} if endpoint.endswith("/artifacts?per_page=100") else original(endpoint, **kwargs)
-        with self.assertRaisesRegex(upstream.StopUpdate, "no successful exact-commit"):
-            self.sync.update(self.state, apply=True, get=no_proof)
-        self.assert_not_applied()
-
-    def test_wrong_official_source_in_publication_proof_cannot_install(self):
-        original = self.get
-        def wrong_source(endpoint, **kwargs):
-            response = original(endpoint, **kwargs)
-            if endpoint.endswith("/zip"):
-                with zipfile.ZipFile(io.BytesIO(response)) as archive:
-                    data = json.loads(archive.read("result.json"))
-                data["official"] = self.base
-                stream = io.BytesIO()
-                with zipfile.ZipFile(stream, "w") as archive:
-                    archive.writestr("result.json", json.dumps(data))
-                return stream.getvalue()
-            return response
-        with self.assertRaisesRegex(upstream.StopUpdate, "pinned official reference"):
-            self.sync.update(self.state, apply=True, get=wrong_source)
+    def test_passing_run_of_another_workflow_is_not_proof(self):
+        with patch.object(self, "test_run", dict(self.test_run, path=".github/workflows/other.yml")):
+            with self.assertRaises(self.sync.DeferredUpdate):
+                self.run_update()
         self.assert_not_applied()
 
     def test_config_change_during_tests_stops_without_overwriting_user(self):

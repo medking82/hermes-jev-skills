@@ -1,0 +1,45 @@
+name: Sync fork with upstream
+
+# Plain fork sync: merge kerpopule/hermes-jev-skills main and refresh the pinned official
+# TypeSafe reference, push, then start test.yml for the new main. A conflict fails the run
+# (GitHub emails the Owner). The local updater installs only a commit whose GitHub and
+# local tests pass.
+on:
+  schedule:
+    - cron: '41 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: fork-sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'medking82/hermes-jev-skills' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Merge Upstream And Refresh The Official TypeSafe Reference
+        id: sync
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python -B codex/upstream.py sync
+      - name: Push And Test The New Main
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push origin HEAD:refs/heads/main
+          # Pushes made with GITHUB_TOKEN start no push workflows; dispatch the tests explicitly.
+          gh workflow run test.yml --ref main
