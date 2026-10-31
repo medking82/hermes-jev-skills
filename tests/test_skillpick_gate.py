@@ -15,7 +15,9 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _home import home_env  # noqa: E402
 from jevkit import client, keystore, skillpick  # noqa: E402
 
 KEY = "apikey_" + "a1" * 30
@@ -459,7 +461,7 @@ class HermesRootsTests(unittest.TestCase):
         self.assertEqual(roots, [self.home / "skills", self.home / "extra"])
 
     def test_tilde_and_environment_variables_are_expanded(self):
-        with mock.patch.dict(os.environ, {"HOME": str(self.base), "TEAM_SKILLS": str(self.shared)}):
+        with mock.patch.dict(os.environ, {**home_env(self.base), "TEAM_SKILLS": str(self.shared)}):
             self.assertEqual(skillpick.discover_roots(self.home, {"skills": {"external_dirs": "~/team/shared-skills"}}),
                              [self.home / "skills", self.shared])
             self.assertEqual(skillpick.discover_roots(self.home, {"skills": {"external_dirs": ["${TEAM_SKILLS}"]}}),
@@ -479,7 +481,7 @@ class HermesRootsTests(unittest.TestCase):
     def test_a_yaml_null_never_becomes_the_home_folder(self):
         """`~` is YAML for nothing. Read as a path it is the person's home folder, and the
         picker would walk their whole disk on every turn."""
-        with mock.patch.dict(os.environ, {"HOME": str(self.base)}):
+        with mock.patch.dict(os.environ, home_env(self.base)):
             for text in ("skills:\n  external_dirs: ~\n", "skills:\n  external_dirs:\n  - ~\n  - null\n",
                          "skills:\n  external_dirs: []\n", "skills:\n  external_dirs:\n"):
                 self.write_config(text)
