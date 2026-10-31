@@ -4,6 +4,15 @@ Codex adapter changes are recorded in [Fork Notes](#codex-adapter-fork).
 
 ## Unreleased
 
+## 0.25.2 (2026-10-28)
+
+Released by the daily Jev steward: 2 commit(s) on main since v0.25.1.
+
+**Changes and fixes**
+
+- fix(routing): isolate concurrent model and effort decisions (333c78e)
+- Keep historical audit notes out of current middleware fix (2f490be)
+
 ## 0.25.1 (2026-10-23)
 
 Released by the daily Jev steward: 10 commit(s) on main since v0.25.0.
