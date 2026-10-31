@@ -16,6 +16,9 @@ try:
 except ImportError:                      # only the indentation test needs it; CI installs it
     yaml = None
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _home import assert_home_is, home_env  # noqa: E402
+
 spec = importlib.util.spec_from_file_location("jev_install", Path(__file__).resolve().parents[1] / "install.py")
 install = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(install)
@@ -42,7 +45,7 @@ def run_installer(argv, home, path="/usr/bin:/bin", hermes_home=None):
     throwaway one back, for the agent shell whose HERMES_HOME is its own profile.
     """
     env = {k: v for k, v in os.environ.items() if k != "HERMES_HOME"}
-    env["HOME"] = str(home)
+    env.update(home_env(home))
     env["PATH"] = path
     if hermes_home is not None:
         env["HERMES_HOME"] = str(hermes_home)
@@ -50,8 +53,44 @@ def run_installer(argv, home, path="/usr/bin:/bin", hermes_home=None):
     with mock.patch.dict(os.environ, env, clear=True), \
             mock.patch.object(sys, "argv", ["install.py", *argv]), \
             contextlib.redirect_stdout(out):
+        assert_home_is(home)
         code = install.main()
     return code, json.loads(out.getvalue())
+
+
+class HomeIsolationTests(unittest.TestCase):
+    """A run of this suite must never reach the real home, on any platform."""
+
+    def test_home_env_moves_every_way_of_finding_home(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, home_env(tmp)):
+            self.assertEqual(Path.home().resolve(), Path(tmp).resolve())
+            self.assertEqual(Path(os.path.expanduser("~")).resolve(), Path(tmp).resolve())
+
+    def test_the_installer_never_runs_while_home_is_still_the_real_one(self):
+        # What happened on Windows: the throwaway HOME was set, but home still resolved to
+        # the real profile. The guard has to stop the run before install.main() writes.
+        real = Path.home()
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(Path, "home", return_value=real), \
+                mock.patch.object(install, "main", side_effect=AssertionError("installer ran")) as main:
+            with self.assertRaisesRegex(AssertionError, "real home"):
+                run_installer(["--check"], tmp)
+            main.assert_not_called()
+
+    def test_a_full_install_writes_only_inside_the_throwaway_home(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for agent in (".claude", ".codex", ".agents"):
+                (Path(tmp) / agent).mkdir()
+            code, report = run_installer([], tmp)
+            self.assertEqual(code, 0)
+            root = Path(tmp).resolve()
+            written = [f["folder"] for f in report["skill_folders"]]
+            written += [report["claude_code"]["folder"], report["claude_code"]["claude_md"]]
+            self.assertEqual(len(written), 5)
+            for path in map(Path, written):
+                self.assertIn(root, path.resolve().parents, path)
+            self.assertTrue((root / ".claude" / "agents").is_dir())
+            self.assertIn(install.BLOCK_BEGIN, (root / ".claude" / "CLAUDE.md").read_text(encoding="utf-8"))
 
 
 class ConfigEditTests(unittest.TestCase):
@@ -375,7 +414,7 @@ class CommandLinkTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertFalse(a_file.is_symlink())
             self.assertEqual(a_file.read_text(), self.THEIRS)
-            self.assertEqual(os.readlink(a_link), str(elsewhere))
+            self.assertEqual(a_link.resolve(), elsewhere.resolve())   # Windows readlink adds \\?\
             self.assertEqual(in_local_bin.read_text(), self.THEIRS)
             self.assertEqual(set(report["cli"]["not_linked"]), {str(a_file), str(a_link), str(in_local_bin)})
             for left in (a_file, a_link, in_local_bin):
@@ -440,6 +479,7 @@ class CommandLinkTests(unittest.TestCase):
             self.assertIn("would not be linked", report["warning"])
 
     @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root writes through a read-only folder")
+    @unittest.skipIf(os.name == "nt", "Windows ignores the read-only bit on a folder")
     def test_one_home_that_cannot_be_written_does_not_stop_the_others(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self._fleet(tmp)
@@ -473,6 +513,7 @@ class CommandLinkTests(unittest.TestCase):
             self.assertEqual((root / "profiles" / "beta" / "bin" / "jev").resolve(), install.JEV)
 
     @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root writes through a read-only folder")
+    @unittest.skipIf(os.name == "nt", "Windows ignores the read-only bit on a folder")
     def test_a_whole_lane_that_cannot_be_written_costs_only_that_lane_and_the_report_still_prints(self):
         """With the lane itself read-only, not just its bin, the `jev` step warned and then the
         plugin links raised: a traceback, no report, so the warning was never seen, and
@@ -599,7 +640,7 @@ class ReportWarningTests(unittest.TestCase):
 
     def test_no_path_warning_when_local_bin_is_on_path(self):
         with tempfile.TemporaryDirectory() as tmp:
-            on_path = f"{tmp}/.local/bin:/usr/bin:/bin"
+            on_path = os.pathsep.join([str(Path(tmp) / ".local" / "bin"), "/usr/bin", "/bin"])
             code, report = run_installer(["--check", "--skills-dir", f"{tmp}/agent"], tmp, path=on_path)
             self.assertEqual(code, 0)
             self.assertTrue(report["cli"]["on_path"])
@@ -627,7 +668,8 @@ class ReportWarningTests(unittest.TestCase):
             hermes = Path(tmp) / ".hermes"
             hermes.mkdir()
             (hermes / "config.yaml").write_text(CONFIG)
-            code, report = run_installer([], tmp, path=f"{tmp}/.local/bin:/usr/bin:/bin")
+            on_path = os.pathsep.join([str(Path(tmp) / ".local" / "bin"), "/usr/bin", "/bin"])
+            code, report = run_installer([], tmp, path=on_path)
             self.assertEqual(code, 0)
             self.assertNotIn("warning", report)
 
