@@ -1,11 +1,11 @@
 {
   "last_receipt": {
-    "commit": "afe49a38b0909b003c93ed88d5d51ffa481421ab",
-    "event_id": "1793427895735640500",
-    "observed_at": "2026-10-31T06:24:55Z",
-    "reason": null,
-    "run_url": null,
-    "status": "unchanged"
+    "commit": "c9d90ffaf92d86d4076c19ae97ac497a4a35accc",
+    "event_id": "1793431640845761700",
+    "observed_at": "2026-10-31T07:27:20Z",
+    "reason": "unclassified-stop",
+    "run_url": "https://github.com/medking82/hermes-jev-skills/actions/runs/41179816556",
+    "status": "stopped"
   },
   "last_update": {
     "commit": "afe49a38b0909b003c93ed88d5d51ffa481421ab",
@@ -15,9 +15,16 @@
     "run_url": "https://github.com/medking82/hermes-jev-skills/actions/runs/40627550834",
     "status": "updated"
   },
-  "received_at": "2026-10-31T06:25:05Z",
+  "received_at": "2026-10-31T07:27:32Z",
   "report": {
-    "blocked": null,
+    "blocked": {
+      "commit": "c9d90ffaf92d86d4076c19ae97ac497a4a35accc",
+      "event_id": "1793431640845761700",
+      "observed_at": "2026-10-31T07:27:20Z",
+      "reason": "unclassified-stop",
+      "run_url": "https://github.com/medking82/hermes-jev-skills/actions/runs/41179816556",
+      "status": "stopped"
+    },
     "canary": false,
     "device": "b0c4d2edb2644ea7",
     "kind": "jev",
@@ -30,19 +37,19 @@
       "status": "updated"
     },
     "launcher": null,
-    "observed_at": "2026-10-31T06:24:57Z",
+    "observed_at": "2026-10-31T07:27:23Z",
     "receipt": {
-      "commit": "afe49a38b0909b003c93ed88d5d51ffa481421ab",
-      "event_id": "1793427895735640500",
-      "observed_at": "2026-10-31T06:24:55Z",
-      "reason": null,
-      "run_url": null,
-      "status": "unchanged"
+      "commit": "c9d90ffaf92d86d4076c19ae97ac497a4a35accc",
+      "event_id": "1793431640845761700",
+      "observed_at": "2026-10-31T07:27:20Z",
+      "reason": "unclassified-stop",
+      "run_url": "https://github.com/medking82/hermes-jev-skills/actions/runs/41179816556",
+      "status": "stopped"
     },
     "schema": 1,
     "task": {
       "last_result": 267009,
-      "last_run": "2026-10-31T06:24:51Z",
+      "last_run": "2026-10-31T07:24:51Z",
       "state": "Running"
     }
   },
