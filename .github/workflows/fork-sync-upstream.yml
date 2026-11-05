@@ -2,26 +2,44 @@ name: Sync fork with upstream
 
 # Plain fork sync: merge kerpopule/hermes-jev-skills main and refresh the pinned official
 # TypeSafe reference, push, then start test.yml for the new main. A conflict fails the run
-# (GitHub emails the Owner). The local updater installs only a commit whose GitHub and
-# local tests pass.
+# (GitHub emails the Owner, at most once per UTC day; later scheduled retries stay green).
+# The local updater installs only a commit whose GitHub and local tests pass.
 on:
   schedule:
     - cron: '41 */6 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  actions: write
+permissions: {}
 
 concurrency:
   group: fork-sync-upstream
   cancel-in-progress: false
 
 jobs:
-  sync:
+  notice:
     if: github.repository == 'medking82/hermes-jev-skills' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      quiet: ${{ steps.check.outputs.quiet }}
+    steps:
+      - name: Check today's failure notice
+        id: check
+        uses: medking82/skills/.github/actions/upstream-sync-notice@main
+        with:
+          mode: check
+
+  sync:
+    needs: notice
+    # A failed notice job must not skip the sync; it then reports normally.
+    if: ${{ !cancelled() && github.repository == 'medking82/hermes-jev-skills' && github.ref == 'refs/heads/main' }}
+    # After the day's first failure email, a scheduled retry that fails again stays green.
+    continue-on-error: ${{ needs.notice.outputs.quiet == 'true' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,3 +61,14 @@ jobs:
           git push origin HEAD:refs/heads/main
           # Pushes made with GITHUB_TOKEN start no push workflows; dispatch the tests explicitly.
           gh workflow run test.yml --ref main
+
+  mark:
+    needs: [notice, sync]
+    if: ${{ !cancelled() && needs.sync.result == 'failure' && needs.notice.outputs.quiet != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Remember today's failure notice
+        uses: medking82/skills/.github/actions/upstream-sync-notice@main
+        with:
+          mode: mark
